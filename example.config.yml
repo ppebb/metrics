@@ -1,0 +1,17 @@
+location: "./repos"
+repositories:
+  - "ppebb/libclang-lua"
+  - "ppebb/cosmo-stub-generator"
+emails:
+  - "ppeb@ppeb.me"
+authors:
+  - "ppeb"
+  - "ppebb"
+ignore:
+  vendor: true
+  dotfiles: true
+  binary: true
+  configuration: true
+  image: true
+  test: true
+  generated: true
