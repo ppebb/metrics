@@ -22,7 +22,6 @@ func check_field(l int, name string) {
 type Config struct {
 	Location     string
 	Repositories []string
-	Emails       []string
 	Authors      []string
 	Ignore       struct {
 		Vendor        bool
@@ -71,7 +70,6 @@ func main() {
 
 	check_field(len(config.Location), "location")
 	check_field(len(config.Repositories), "repositories")
-	check_field(len(config.Emails), "emails")
 	check_field(len(config.Authors), "authors")
 
 	err = os.MkdirAll(config.Location, os.FileMode(0777))

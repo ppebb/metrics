@@ -6,6 +6,7 @@ import (
 	"os"
 	"path"
 	"regexp"
+	"strconv"
 	"strings"
 
 	"github.com/go-enry/go-enry/v2"
@@ -164,6 +165,11 @@ func repo_skip_file_data(repo_file string, data []byte) bool {
 
 func repo_check(repo Repo) map[string]int {
 	ret := map[string]int{}
+
+	for _, v := range repo_get_matching_commits(repo) {
+		println(v.Hash, v.Timestamp)
+	}
+
 	for _, repo_file := range repo.Files {
 		fpath := path.Join(repo.Path, repo_file)
 
@@ -184,6 +190,30 @@ func repo_check(repo Repo) map[string]int {
 		}
 
 		ret[langs[0]] += bytes.Count(data, []byte{'\n'})
+	}
+
+	return ret
+}
+
+func repo_get_matching_commits(repo Repo) []Commit {
+	ret := []Commit{}
+
+	for _, author := range config.Authors {
+		commits_text := run_git_sync(repo.Path, "log", "--author="+author, "--pretty=format:%h %ct")
+		commits_lines := strings.Split(commits_text, "\n")
+
+		for _, line := range commits_lines {
+			split := strings.Fields(line)
+
+			if len(split) != 2 {
+				continue
+				// panic(fmt.Sprintf("Commit line %s did not split into 2 strings!", line))
+			}
+
+			timestamp, err := strconv.ParseUint(split[1], 10, 64)
+			check(err)
+			ret = commits_insert_sorted_unique(ret, Commit{Hash: split[0], Timestamp: timestamp})
+		}
 	}
 
 	return ret

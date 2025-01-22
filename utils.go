@@ -27,3 +27,26 @@ func is_directory(path string) bool {
 
 	return info.IsDir()
 }
+
+func bin_search[T any](list []T, element T, cmp func(T, T) int) int {
+	lo := 0
+	hi := len(list) - 1
+
+	for lo <= hi {
+		i := (lo + hi) / 2
+
+		c := cmp(element, list[i])
+
+		if c == 0 {
+			return i
+		}
+
+		if c < 0 {
+			lo = i + 1
+		} else {
+			hi = i - 1
+		}
+	}
+
+	return ^lo
+}

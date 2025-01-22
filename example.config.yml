@@ -2,11 +2,10 @@ location: "./repos"
 repositories:
   - "ppebb/libclang-lua"
   - "ppebb/cosmo-stub-generator"
-emails:
-  - "ppeb@ppeb.me"
 authors:
   - "ppeb"
   - "ppebb"
+  - "ppeb@ppeb.me"
 ignore:
   vendor: true
   dotfiles: true
