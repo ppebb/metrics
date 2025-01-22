@@ -249,7 +249,7 @@ func repo_get_matching_commits(repo Repo) []Commit {
 	ret := []Commit{}
 
 	for _, author := range config.Authors {
-		commits_text, _, err := run_git_sync(repo.Path, "log", "--author="+author, "--pretty=format:%h %ct")
+		commits_text, _, err := run_git_sync(repo.Path, "log", "--author="+author, "--no-merges", "--pretty=format:%h %ct")
 		check(err)
 		commits_lines := strings.Split(commits_text, "\n")
 
