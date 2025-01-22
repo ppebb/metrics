@@ -44,13 +44,29 @@ var outputPath string
 var config Config
 var dryRun = false
 
+func print_help() {
+	fmt.Printf(`
+ppeb's git language metrics generator!!!
+
+Usage: ./ppebtrics [OPTIONS]
+ -h|--help             Display this message and exit
+ -c|--config           Specify the path to your config.yml
+ -o|--output           Specify the output path of your svg
+ -d|--dry-run          Dry run! List the repos to be cloned and analyzed
+`)
+
+	os.Exit(1)
+}
+
 func main() {
 	var config_path string
 
 	argsLen := len(os.Args)
-	for i := 0; i < argsLen; i++ {
+	for i := 1; i < argsLen; i++ {
 		arg := os.Args[i]
 		switch arg {
+		case "-h", "--help":
+			print_help()
 		case "-c", "--config":
 			if argsLen > i+1 {
 				config_path = os.Args[i+1]
@@ -63,6 +79,9 @@ func main() {
 			}
 		case "-d", "--dry-run":
 			dryRun = true
+		default:
+			fmt.Printf("Unknown argument %s!\n", arg)
+			print_help()
 		}
 	}
 
