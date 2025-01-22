@@ -14,6 +14,9 @@ authors:
   - "ppeb"
   - "ppebb"
   - "ppeb@ppeb.me"
+filters:
+  - "reaganism"
+  - "terraprisma"
 ignore:
   vendor: true
   dotfiles: true
