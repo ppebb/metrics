@@ -1,5 +1,6 @@
 location: "./repos"
 indepth: true
+countloc: false
 token: "scopeless access token"
 excludeforks: true
 users:

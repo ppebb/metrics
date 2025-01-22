@@ -230,7 +230,12 @@ func repo_count_by_commit(repo *Repo) map[string]int {
 			}
 
 			lang := diff_get_language(*repo, diff)
-			ret[lang] += int(diff.Added + diff.Removed)
+
+			if config.Countloc {
+				ret[lang] += int(diff.Added - diff.Removed)
+			} else {
+				ret[lang] += int(diff.Added + diff.Removed)
+			}
 		}
 	}
 

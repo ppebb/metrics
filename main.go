@@ -23,6 +23,7 @@ func check_field(l int, name string) {
 type Config struct {
 	Location     string
 	Indepth      bool
+	Countloc     bool
 	Token        string
 	ExcludeForks bool
 	Users        []string
