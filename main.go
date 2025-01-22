@@ -21,6 +21,7 @@ func check_field(l int, name string) {
 
 type Config struct {
 	Location     string
+	Indepth      bool
 	Repositories []string
 	Authors      []string
 	Ignore       struct {
@@ -77,9 +78,14 @@ func main() {
 
 	for _, id := range config.Repositories {
 		repo := repo_new(id)
-		repo_refresh(repo)
 
-		counts := repo_check(repo)
+		var counts map[string]int
+		if config.Indepth {
+			counts = repo_count_by_commit(&repo)
+		} else {
+			counts = repo_count(&repo)
+		}
+
 		for k, v := range counts {
 			fmt.Println(k, "value is", v)
 		}

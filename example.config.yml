@@ -1,4 +1,5 @@
 location: "./repos"
+indepth: true
 repositories:
   - "ppebb/libclang-lua"
   - "ppebb/cosmo-stub-generator"

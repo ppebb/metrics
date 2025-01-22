@@ -17,6 +17,12 @@ type Repo struct {
 	Path            string
 	VendoredFilters []*regexp.Regexp
 	Files           []string
+	FileLangMap     map[string]string
+	FileSkipMap     map[string]bool
+	CurrentCommit   Commit
+	LatestCommit    Commit
+	CurrentBranch   string
+	LatestBranch    string
 }
 
 func repo_new(repo_id string) Repo {
@@ -24,8 +30,11 @@ func repo_new(repo_id string) Repo {
 
 	ret.Identifier = repo_id
 	ret.Path = repo_path(repo_id)
-	ret.VendoredFilters = repo_vendored_filters(ret.Path)
-	ret.Files = repo_files(ret.Path)
+
+	ret.FileLangMap = map[string]string{}
+	ret.FileSkipMap = map[string]bool{}
+
+	repo_pull_or_clone(&ret)
 
 	return ret
 }
@@ -93,7 +102,7 @@ func repo_path(repo_id string) string {
 	return path.Join(config.Location, splits[1])
 }
 
-func repo_refresh(repo Repo) {
+func repo_pull_or_clone(repo *Repo) {
 	if !file_exists(repo.Path) {
 		fmt.Printf("Cloning repository %s\n", repo.Identifier)
 		run_git_sync(config.Location, "clone", "https://github.com/"+repo.Identifier)
@@ -101,6 +110,22 @@ func repo_refresh(repo Repo) {
 		fmt.Printf("Pulling repository %s at %s\n", repo.Identifier, repo.Path)
 		run_git_sync(repo.Path, "pull")
 	}
+
+	repo.VendoredFilters = repo_vendored_filters(repo.Path)
+	repo.Files = repo_files(repo.Path)
+
+	latestBranch := repo_get_current_branch(*repo)
+	repo.CurrentBranch = latestBranch
+	repo.LatestBranch = latestBranch
+
+	latestCommit := repo_get_latest_commit(*repo)
+	repo.CurrentCommit = latestCommit
+	repo.LatestCommit = latestCommit
+}
+
+func repo_refresh(repo *Repo) {
+	repo.VendoredFilters = repo_vendored_filters(repo.Path)
+	repo.Files = repo_files(repo.Path)
 }
 
 func repo_check_path_vendored(repo Repo, path string) bool {
@@ -164,17 +189,13 @@ func repo_skip_file_data(repo_file string, data []byte) bool {
 	return false
 }
 
-func repo_check(repo Repo) map[string]int {
+func repo_count(repo *Repo) map[string]int {
 	ret := map[string]int{}
-
-	for _, v := range repo_get_matching_commits(repo) {
-		println(v.Hash, v.Timestamp, v.Root)
-	}
 
 	for _, repo_file := range repo.Files {
 		fpath := path.Join(repo.Path, repo_file)
 
-		if repo_skip_file_name(repo, repo_file, fpath) {
+		if repo_skip_file_name(*repo, repo_file, fpath) {
 			continue
 		}
 
@@ -192,6 +213,29 @@ func repo_check(repo Repo) map[string]int {
 
 		ret[langs[0]] += bytes.Count(data, []byte{'\n'})
 	}
+
+	return ret
+}
+
+func repo_count_by_commit(repo *Repo) map[string]int {
+	ret := map[string]int{}
+
+	for _, commit := range repo_get_matching_commits(*repo) {
+		fmt.Printf("Checking out commit %s\n", commit.Hash)
+		repo_checkout_commit(repo, commit)
+
+		for _, diff := range commit_diffs(commit, *repo) {
+			if diff_should_skip(*repo, diff) {
+				continue
+			}
+
+			lang := diff_get_language(*repo, diff)
+			ret[lang] += int(diff.Added + diff.Removed)
+		}
+	}
+
+	fmt.Printf("Checking out branch %s\n", repo.LatestBranch)
+	repo_checkout_branch(repo, repo.LatestBranch)
 
 	return ret
 }
@@ -219,4 +263,52 @@ func repo_get_matching_commits(repo Repo) []Commit {
 	}
 
 	return ret
+}
+
+func repo_get_latest_commit(repo Repo) Commit {
+	stdout, _, err := run_git_sync(repo.Path, "log", "-n", "1", "--pretty=format:%h %ct")
+	check(err)
+
+	commit_line := strings.Trim(stdout, "\t\n\r ")
+	split := strings.Fields(commit_line)
+
+	timestamp, err := strconv.ParseUint(split[1], 10, 64)
+	check(err)
+
+	return commit_new(repo, split[0], timestamp)
+}
+
+func repo_get_current_branch(repo Repo) string {
+	stdout, _, err := run_git_sync(repo.Path, "branch", "--show-current")
+	check(err)
+
+	return strings.Trim(stdout, "\n\r\t ")
+}
+
+func repo_checkout_branch(repo *Repo, branch string) {
+	if repo.CurrentBranch == branch {
+		return
+	}
+
+	_, _, err := run_git_sync(repo.Path, "checkout", branch)
+	check(err)
+
+	repo.CurrentBranch = branch
+	repo.CurrentCommit = repo_get_latest_commit(*repo)
+
+	repo_refresh(repo)
+}
+
+func repo_checkout_commit(repo *Repo, commit Commit) {
+	if repo.CurrentCommit == commit {
+		return
+	}
+
+	_, _, err := run_git_sync(repo.Path, "checkout", commit.Hash)
+	check(err)
+
+	repo.CurrentCommit = commit
+	repo.CurrentBranch = ""
+
+	repo_refresh(repo)
 }

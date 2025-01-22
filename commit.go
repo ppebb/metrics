@@ -2,6 +2,7 @@ package main
 
 import (
 	"slices"
+	"strconv"
 	"strings"
 )
 
@@ -53,4 +54,36 @@ func commits_insert_sorted_unique(commits []Commit, commit Commit) []Commit {
 	}
 
 	return commits
+}
+
+func commit_diffs(commit Commit, repo Repo) []Diff {
+	ret := []Diff{}
+
+	var prev_commit string
+	if commit.Root {
+		prev_commit = "4b825dc642cb6eb9a060e54bf8d69288fbee4904"
+	} else {
+		prev_commit = "HEAD^"
+	}
+
+	stdout, _, err := run_git_sync(repo.Path, "diff", "--numstat", prev_commit, commit.Hash)
+	check(err)
+
+	diff_lines := strings.Split(stdout, "\n")
+
+	for _, line := range diff_lines {
+		split := strings.Fields(line)
+
+		if len(split) != 3 {
+			continue
+		}
+
+		added, err := strconv.ParseUint(split[0], 10, 32)
+		check(err)
+		removed, err := strconv.ParseUint(split[1], 10, 32)
+		check(err)
+		ret = append(ret, Diff{File: split[2], Added: uint(added), Removed: uint(removed)})
+	}
+
+	return ret
 }
