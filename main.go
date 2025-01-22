@@ -77,8 +77,11 @@ func main() {
 	err = os.MkdirAll(config.Location, os.FileMode(0777))
 	check(err)
 
-	for i := 0; i < len(config.Repositories); i++ {
-		counts := check_repository(config.Repositories[i])
+	for _, id := range config.Repositories {
+		repo := repo_new(id)
+		repo_refresh(repo)
+
+		counts := repo_check(repo)
 		for k, v := range counts {
 			fmt.Println(k, "value is", v)
 		}
