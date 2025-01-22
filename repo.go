@@ -31,7 +31,8 @@ func repo_new(repo_id string) Repo {
 }
 
 func repo_files(repo_path string) []string {
-	stdout := run_git_sync(repo_path, "ls-files")
+	stdout, _, err := run_git_sync(repo_path, "ls-files")
+	check(err)
 
 	return strings.Split(stdout, "\n")
 }
@@ -167,7 +168,7 @@ func repo_check(repo Repo) map[string]int {
 	ret := map[string]int{}
 
 	for _, v := range repo_get_matching_commits(repo) {
-		println(v.Hash, v.Timestamp)
+		println(v.Hash, v.Timestamp, v.Root)
 	}
 
 	for _, repo_file := range repo.Files {
@@ -199,7 +200,8 @@ func repo_get_matching_commits(repo Repo) []Commit {
 	ret := []Commit{}
 
 	for _, author := range config.Authors {
-		commits_text := run_git_sync(repo.Path, "log", "--author="+author, "--pretty=format:%h %ct")
+		commits_text, _, err := run_git_sync(repo.Path, "log", "--author="+author, "--pretty=format:%h %ct")
+		check(err)
 		commits_lines := strings.Split(commits_text, "\n")
 
 		for _, line := range commits_lines {
@@ -212,7 +214,7 @@ func repo_get_matching_commits(repo Repo) []Commit {
 
 			timestamp, err := strconv.ParseUint(split[1], 10, 64)
 			check(err)
-			ret = commits_insert_sorted_unique(ret, Commit{Hash: split[0], Timestamp: timestamp})
+			ret = commits_insert_sorted_unique(ret, commit_new(repo, split[0], timestamp))
 		}
 	}
 

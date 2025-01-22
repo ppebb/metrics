@@ -1,10 +1,34 @@
 package main
 
-import "slices"
+import (
+	"slices"
+	"strings"
+)
 
 type Commit struct {
 	Hash      string
 	Timestamp uint64
+	Root      bool
+}
+
+func commit_new(repo Repo, hash string, timestamp uint64) Commit {
+	return Commit{
+		Hash:      hash,
+		Timestamp: timestamp,
+		Root:      commit_is_root(repo, hash),
+	}
+}
+
+func commit_is_root(repo Repo, hash string) bool {
+	_, stderr, err := run_git_sync(repo.Path, "rev-parse", hash+"^")
+
+	if strings.Contains(stderr, "unknown revision or path not in the working tree") {
+		return true
+	} else if err == nil {
+		return false
+	}
+
+	panic(err.Error())
 }
 
 func compare_commit(c1 Commit, c2 Commit) int {

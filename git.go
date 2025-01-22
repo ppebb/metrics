@@ -2,11 +2,12 @@ package main
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"os/exec"
 )
 
-func run_git_sync(dir string, args ...string) string {
+func run_git_sync(dir string, args ...string) (string, string, error) {
 	cmd := exec.Command("git", args...)
 	cmd.Dir = dir
 
@@ -16,15 +17,15 @@ func run_git_sync(dir string, args ...string) string {
 	cmd.Stdout = stdout
 	cmd.Stderr = stderr
 
-	check(cmd.Run())
+	cmd.Run()
 
-	out := stdout.Bytes()
-	err := stderr.Bytes()
+	out := string(stdout.Bytes())
+	err := string(stderr.Bytes())
 
 	code := cmd.ProcessState.ExitCode()
 	if code != 0 {
-		panic(fmt.Sprintf("Git errored with code %d: %s", code, string(err)))
+		return out, err, errors.New(fmt.Sprintf("Git errored with code %d: %s", code, string(err)))
 	}
 
-	return string(out)
+	return out, err, nil
 }
