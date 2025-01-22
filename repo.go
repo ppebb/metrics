@@ -105,7 +105,7 @@ func repo_path(repo_id string) string {
 func repo_pull_or_clone(repo *Repo) {
 	if !file_exists(repo.Path) {
 		fmt.Printf("Cloning repository %s\n", repo.Identifier)
-		run_git_sync(config.Location, "clone", "https://github.com/"+repo.Identifier)
+		run_git_sync(config.Location, "clone", "https://github.com/"+repo.Identifier+".git")
 	} else {
 		fmt.Printf("Pulling repository %s at %s\n", repo.Identifier, repo.Path)
 		run_git_sync(repo.Path, "pull")

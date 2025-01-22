@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"slices"
 
 	"gopkg.in/yaml.v3"
 )
@@ -22,6 +23,10 @@ func check_field(l int, name string) {
 type Config struct {
 	Location     string
 	Indepth      bool
+	Token        string
+	ExcludeForks bool
+	Users        []string
+	Orgs         []string
 	Repositories []string
 	Authors      []string
 	Ignore       struct {
@@ -35,8 +40,9 @@ type Config struct {
 	}
 }
 
-var output_path string
+var outputPath string
 var config Config
+var dryRun = false
 
 func main() {
 	var config_path string
@@ -52,9 +58,11 @@ func main() {
 			}
 		case "-o", "--output":
 			if argsLen > i+1 {
-				output_path = os.Args[i+1]
+				outputPath = os.Args[i+1]
 				i++
 			}
+		case "-d", "--dry-run":
+			dryRun = true
 		}
 	}
 
@@ -76,7 +84,40 @@ func main() {
 	err = os.MkdirAll(config.Location, os.FileMode(0777))
 	check(err)
 
-	for _, id := range config.Repositories {
+	reposToCheck := config.Repositories
+
+	copyToReposToCheck := func(repoResponses []RepoResponse) {
+		for _, repo := range repoResponses {
+			if config.ExcludeForks && repo.Fork {
+				continue
+			}
+
+			if !slices.Contains(reposToCheck, repo.Full_Name) {
+				reposToCheck = append(reposToCheck, repo.Full_Name)
+			}
+		}
+	}
+
+	for _, user := range config.Users {
+		copyToReposToCheck(github_get_account_repos(user, false, config.Token))
+	}
+
+	for _, org := range config.Orgs {
+		copyToReposToCheck(github_get_account_repos(org, true, config.Token))
+	}
+
+	if dryRun {
+		fmt.Println("The following repositories will be cloned and analyzed:")
+		for _, v := range reposToCheck {
+			fmt.Printf("    %s\n", v)
+		}
+
+		return
+	}
+
+	cumulativeLangs := map[string]int{}
+
+	for _, id := range reposToCheck {
 		repo := repo_new(id)
 
 		var counts map[string]int
@@ -87,7 +128,11 @@ func main() {
 		}
 
 		for k, v := range counts {
-			fmt.Println(k, "value is", v)
+			cumulativeLangs[k] += v
 		}
+	}
+
+	for k, v := range cumulativeLangs {
+		fmt.Println(k, v)
 	}
 }

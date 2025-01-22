@@ -1,5 +1,11 @@
 location: "./repos"
 indepth: true
+token: "scopeless access token"
+excludeforks: true
+users:
+  - "ppebb"
+orgs:
+  - "Retro-Rewind-Team"
 repositories:
   - "ppebb/libclang-lua"
   - "ppebb/cosmo-stub-generator"

@@ -78,6 +78,10 @@ func commit_diffs(commit Commit, repo Repo) []Diff {
 			continue
 		}
 
+		if split[0] == "-" || split[1] == "-" {
+			continue
+		}
+
 		added, err := strconv.ParseUint(split[0], 10, 32)
 		check(err)
 		removed, err := strconv.ParseUint(split[1], 10, 32)
