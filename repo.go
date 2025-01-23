@@ -221,7 +221,7 @@ func repo_count_by_commit(repo *Repo) map[string]int {
 	ret := map[string]int{}
 
 	for _, commit := range repo_get_matching_commits(*repo) {
-		fmt.Printf("Checking out commit %s\n", commit.Hash)
+		// fmt.Printf("Checking out commit %s\n", commit.Hash)
 		repo_checkout_commit(repo, commit)
 
 		for _, diff := range commit_diffs(commit, *repo) {
@@ -231,6 +231,10 @@ func repo_count_by_commit(repo *Repo) map[string]int {
 
 			lang := diff_get_language(*repo, diff)
 
+			if lang == "" {
+				lang = "Unknown"
+			}
+
 			if config.Countloc {
 				ret[lang] += int(diff.Added - diff.Removed)
 			} else {
@@ -239,7 +243,7 @@ func repo_count_by_commit(repo *Repo) map[string]int {
 		}
 	}
 
-	fmt.Printf("Checking out branch %s\n", repo.LatestBranch)
+	// fmt.Printf("Checking out branch %s\n", repo.LatestBranch)
 	repo_checkout_branch(repo, repo.LatestBranch)
 
 	return ret

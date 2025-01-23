@@ -9,12 +9,19 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+func check_field(l int, name string) {
+	if l == 0 {
+		panic(fmt.Sprintf("Config is missing field %s!", name))
+	}
+}
+
 type Config struct {
 	Location     string
 	Indepth      bool
 	Countloc     bool
 	Token        string
 	ExcludeForks bool
+	Parallel     uint8
 	Users        []string
 	Orgs         []string
 	Repositories []string
@@ -97,10 +104,12 @@ func config_init(path string) {
 	}
 
 	for _, user := range config.Users {
+		fmt.Printf("Fetching repositories for user %s\n", user)
 		copyToReposToCheck(github_get_account_repos(user, false, config.Token))
 	}
 
 	for _, org := range config.Orgs {
+		fmt.Printf("Fetching repositories for org %s\n", org)
 		copyToReposToCheck(github_get_account_repos(org, true, config.Token))
 	}
 }

@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"sync"
 )
 
 func check(e error) {
@@ -11,10 +12,9 @@ func check(e error) {
 	}
 }
 
-func check_field(l int, name string) {
-	if l == 0 {
-		panic(fmt.Sprintf("Config is missing field %s!", name))
-	}
+type ConcStringIntMap struct {
+	mu sync.Mutex
+	v  map[string]int
 }
 
 func print_help() {
@@ -74,24 +74,78 @@ func main() {
 		return
 	}
 
-	cumulativeLangs := map[string]int{}
+	cumulativeLangs := ConcStringIntMap{
+		mu: sync.Mutex{},
+		v:  map[string]int{},
+	}
 
-	for _, id := range reposToCheck {
-		repo := repo_new(id)
+	var cancelChannel chan bool
+	closed := false
+	closeOnce := sync.OnceFunc(func() { close(cancelChannel); closed = true })
 
-		var counts map[string]int
-		if config.Indepth {
-			counts = repo_count_by_commit(&repo)
-		} else {
-			counts = repo_count(&repo)
-		}
+	countRepo := func(repos <-chan string, cancel <-chan bool, wg *sync.WaitGroup) {
+		defer wg.Done()
 
-		for k, v := range counts {
-			cumulativeLangs[k] += v
+		var lastRepo *Repo
+
+		defer func() {
+			if r := recover(); r != nil {
+				fmt.Printf("Panic caught, %s, exiting...\n", r)
+				if lastRepo != nil {
+					repo_checkout_branch(lastRepo, lastRepo.LatestBranch)
+				}
+
+				closeOnce()
+			}
+		}()
+
+	REPOSLOOP:
+		for id := range repos {
+			select {
+			case _, ok := <-cancel:
+				if !ok {
+					break REPOSLOOP
+				}
+			default:
+				repo := repo_new(id)
+				lastRepo = &repo
+
+				var counts map[string]int
+				if config.Indepth {
+					counts = repo_count_by_commit(&repo)
+				} else {
+					counts = repo_count(&repo)
+				}
+
+				cumulativeLangs.mu.Lock()
+				for k, v := range counts {
+					cumulativeLangs.v[k] += v
+				}
+				cumulativeLangs.mu.Unlock()
+			}
 		}
 	}
 
-	for k, v := range cumulativeLangs {
+	repoChannel := make(chan string, len(reposToCheck))
+	cancelChannel = make(chan bool)
+	var wg sync.WaitGroup
+
+	for i := 0; i < int(config.Parallel); i++ {
+		wg.Add(1)
+		go countRepo(repoChannel, cancelChannel, &wg)
+	}
+
+	for _, id := range reposToCheck {
+		repoChannel <- id
+	}
+
+	close(repoChannel)
+	wg.Wait()
+	if closed {
+		return
+	}
+
+	for k, v := range cumulativeLangs.v {
 		fmt.Println(k, v)
 	}
 }

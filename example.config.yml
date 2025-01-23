@@ -3,6 +3,7 @@ indepth: true
 countloc: false
 token: "scopeless access token"
 excludeforks: true
+parallel: 8
 users:
   - "ppebb"
 orgs:
