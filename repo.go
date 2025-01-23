@@ -34,7 +34,7 @@ func repo_new(repo_id string) Repo {
 	ret.FileLangMap = map[string]string{}
 	ret.FileSkipMap = map[string]bool{}
 
-	repo_pull_or_clone(&ret)
+	ret.repo_pull_or_clone()
 
 	return ret
 }
@@ -102,7 +102,7 @@ func repo_path(repo_id string) string {
 	return path.Join(config.Location, splits[1])
 }
 
-func repo_pull_or_clone(repo *Repo) {
+func (repo *Repo) repo_pull_or_clone() {
 	if !file_exists(repo.Path) {
 		fmt.Printf("Cloning repository %s\n", repo.Identifier)
 		run_git_sync(config.Location, "clone", "https://github.com/"+repo.Identifier+".git")
@@ -114,21 +114,21 @@ func repo_pull_or_clone(repo *Repo) {
 	repo.VendoredFilters = repo_vendored_filters(repo.Path)
 	repo.Files = repo_files(repo.Path)
 
-	latestBranch := repo_get_current_branch(*repo)
+	latestBranch := repo.get_current_branch()
 	repo.CurrentBranch = latestBranch
 	repo.LatestBranch = latestBranch
 
-	latestCommit := repo_get_latest_commit(*repo)
+	latestCommit := repo.get_latest_commit()
 	repo.CurrentCommit = latestCommit
 	repo.LatestCommit = latestCommit
 }
 
-func repo_refresh(repo *Repo) {
+func (repo *Repo) refresh() {
 	repo.VendoredFilters = repo_vendored_filters(repo.Path)
 	repo.Files = repo_files(repo.Path)
 }
 
-func repo_check_path_vendored(repo Repo, path string) bool {
+func (repo Repo) check_path_vendored(path string) bool {
 	if enry.IsVendor(path) {
 		return true
 	}
@@ -142,12 +142,12 @@ func repo_check_path_vendored(repo Repo, path string) bool {
 	return false
 }
 
-func repo_skip_file_name(repo Repo, repo_file string, fpath string) bool {
+func (repo Repo) skip_file_name(repo_file string, fpath string) bool {
 	if !file_exists(fpath) || is_symlink(fpath) || is_directory(fpath) {
 		return true
 	}
 
-	if config.Ignore.Vendor && repo_check_path_vendored(repo, repo_file) {
+	if config.Ignore.Vendor && repo.check_path_vendored(repo_file) {
 		fmt.Printf("Skipping vendored file %s\n", repo_file)
 		return true
 	}
@@ -175,7 +175,7 @@ func repo_skip_file_name(repo Repo, repo_file string, fpath string) bool {
 	return false
 }
 
-func repo_skip_file_data(repo_file string, data []byte) bool {
+func skip_file_data(repo_file string, data []byte) bool {
 	if config.Ignore.Binary && enry.IsBinary(data) {
 		fmt.Printf("Skipping binary file %s\n", repo_file)
 		return true
@@ -189,20 +189,20 @@ func repo_skip_file_data(repo_file string, data []byte) bool {
 	return false
 }
 
-func repo_count(repo *Repo) map[string]int {
+func (repo Repo) repo_count() map[string]int {
 	ret := map[string]int{}
 
 	for _, repo_file := range repo.Files {
 		fpath := path.Join(repo.Path, repo_file)
 
-		if repo_skip_file_name(*repo, repo_file, fpath) {
+		if repo.skip_file_name(repo_file, fpath) {
 			continue
 		}
 
 		data, err := os.ReadFile(fpath)
 		check(err)
 
-		if repo_skip_file_data(repo_file, data) {
+		if skip_file_data(repo_file, data) {
 			continue
 		}
 
@@ -217,21 +217,21 @@ func repo_count(repo *Repo) map[string]int {
 	return ret
 }
 
-func repo_count_by_commit(repo *Repo) map[string]int {
+func (repo Repo) repo_count_by_commit() map[string]int {
 	ret := map[string]int{}
 
-	for _, commit := range repo_get_matching_commits(*repo) {
+	for _, commit := range repo.get_matching_commits() {
 		// fmt.Printf("Checking out commit %s\n", commit.Hash)
-		repo_checkout_commit(repo, commit)
+		repo.checkout_commit(commit)
 
-		for _, diff := range commit_diffs(commit, *repo) {
-			if diff_should_skip(*repo, diff) {
+		for _, diff := range commit.get_diffs(repo) {
+			if diff.should_skip(repo) {
 				continue
 			}
 
-			lang := diff_get_language(*repo, diff)
+			lang := diff.get_language(repo)
 
-			if lang == "" {
+			if len(lang) == 0 {
 				lang = "Unknown"
 			}
 
@@ -244,12 +244,12 @@ func repo_count_by_commit(repo *Repo) map[string]int {
 	}
 
 	// fmt.Printf("Checking out branch %s\n", repo.LatestBranch)
-	repo_checkout_branch(repo, repo.LatestBranch)
+	repo.checkout_branch(repo.LatestBranch)
 
 	return ret
 }
 
-func repo_get_matching_commits(repo Repo) []Commit {
+func (repo Repo) get_matching_commits() []Commit {
 	ret := []Commit{}
 
 	for _, author := range config.Authors {
@@ -274,7 +274,7 @@ func repo_get_matching_commits(repo Repo) []Commit {
 	return ret
 }
 
-func repo_get_latest_commit(repo Repo) Commit {
+func (repo Repo) get_latest_commit() Commit {
 	stdout, _, err := run_git_sync(repo.Path, "log", "-n", "1", "--pretty=format:%h %ct")
 	check(err)
 
@@ -287,14 +287,14 @@ func repo_get_latest_commit(repo Repo) Commit {
 	return commit_new(repo, split[0], timestamp)
 }
 
-func repo_get_current_branch(repo Repo) string {
+func (repo Repo) get_current_branch() string {
 	stdout, _, err := run_git_sync(repo.Path, "branch", "--show-current")
 	check(err)
 
 	return strings.Trim(stdout, "\n\r\t ")
 }
 
-func repo_checkout_branch(repo *Repo, branch string) {
+func (repo *Repo) checkout_branch(branch string) {
 	if repo.CurrentBranch == branch {
 		return
 	}
@@ -303,12 +303,12 @@ func repo_checkout_branch(repo *Repo, branch string) {
 	check(err)
 
 	repo.CurrentBranch = branch
-	repo.CurrentCommit = repo_get_latest_commit(*repo)
+	repo.CurrentCommit = repo.get_latest_commit()
 
-	repo_refresh(repo)
+	repo.refresh()
 }
 
-func repo_checkout_commit(repo *Repo, commit Commit) {
+func (repo *Repo) checkout_commit(commit Commit) {
 	if repo.CurrentCommit == commit {
 		return
 	}
@@ -319,5 +319,5 @@ func repo_checkout_commit(repo *Repo, commit Commit) {
 	repo.CurrentCommit = commit
 	repo.CurrentBranch = ""
 
-	repo_refresh(repo)
+	repo.refresh()
 }

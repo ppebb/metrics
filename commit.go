@@ -56,7 +56,7 @@ func commits_insert_sorted_unique(commits []Commit, commit Commit) []Commit {
 	return commits
 }
 
-func commit_diffs(commit Commit, repo Repo) []Diff {
+func (commit Commit) get_diffs(repo Repo) []Diff {
 	ret := []Diff{}
 
 	var prev_commit string

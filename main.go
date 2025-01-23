@@ -91,8 +91,9 @@ func main() {
 		defer func() {
 			if r := recover(); r != nil {
 				fmt.Printf("Panic caught, %s, exiting...\n", r)
+
 				if lastRepo != nil {
-					repo_checkout_branch(lastRepo, lastRepo.LatestBranch)
+					lastRepo.checkout_branch(lastRepo.LatestBranch)
 				}
 
 				closeOnce()
@@ -112,9 +113,9 @@ func main() {
 
 				var counts map[string]int
 				if config.Indepth {
-					counts = repo_count_by_commit(&repo)
+					counts = repo.repo_count_by_commit()
 				} else {
-					counts = repo_count(&repo)
+					counts = repo.repo_count()
 				}
 
 				cumulativeLangs.mu.Lock()
