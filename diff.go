@@ -13,7 +13,7 @@ type Diff struct {
 	Removed uint
 }
 
-func (diff Diff) should_skip(repo Repo) bool {
+func (diff Diff) should_skip(repo *Repo) bool {
 	if stored, ok := repo.FileSkipMap[diff.File]; ok {
 		return stored
 	}
@@ -27,7 +27,7 @@ func (diff Diff) should_skip(repo Repo) bool {
 		data, err := os.ReadFile(fpath)
 		check(err)
 
-		if skip_file_data(diff.File, data) {
+		if repo.skip_file_data(diff.File, data) {
 			ret = true
 		}
 	}
@@ -36,7 +36,7 @@ func (diff Diff) should_skip(repo Repo) bool {
 	return ret
 }
 
-func (diff Diff) get_language(repo Repo) string {
+func (diff Diff) get_language(repo *Repo) string {
 	if stored, ok := repo.FileLangMap[diff.File]; ok {
 		return stored
 	}

@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"strings"
 	"sync"
 )
 
@@ -63,7 +64,10 @@ func main() {
 		panic("Missing config argument, provide a config.yml with -c or --config")
 	}
 
+	log_init()
+	defer log_close()
 	config_init(config_path)
+	log_populate_cursor_pos()
 
 	if dryRun {
 		fmt.Println("The following repositories will be cloned and analyzed:")
@@ -90,12 +94,14 @@ func main() {
 
 		defer func() {
 			if r := recover(); r != nil {
-				fmt.Printf("Panic caught, %s, exiting...\n", r)
+				pstr := strings.Replace(fmt.Sprint(r), "\n", "", -1)
+				log(Critical, lastRepo, fmt.Sprintf("Panic caught, %s, exiting...", pstr))
 
 				if lastRepo != nil {
 					lastRepo.checkout_branch(lastRepo.LatestBranch)
 				}
 
+				log_progress(lastRepo, fmt.Sprintf("Panic caught, %s, exiting...", pstr), -1)
 				closeOnce()
 			}
 		}()
@@ -105,6 +111,7 @@ func main() {
 			select {
 			case _, ok := <-cancel:
 				if !ok {
+					log_progress(lastRepo, "Exited", -1)
 					break REPOSLOOP
 				}
 			default:
@@ -142,6 +149,9 @@ func main() {
 
 	close(repoChannel)
 	wg.Wait()
+
+	log_reset_term_if_needed()
+
 	if closed {
 		return
 	}

@@ -59,7 +59,7 @@ func config_init(path string) {
 
 	reposToCheck = config.Repositories
 
-	var testRepo func(repo string) bool
+	var testRepo func(repo string) (bool, string)
 
 	if len(config.Filters) > 0 {
 		filters := []*regexp.Regexp{}
@@ -74,26 +74,28 @@ func config_init(path string) {
 			filters = append(filters, regex)
 		}
 
-		testRepo = func(repo string) bool {
+		testRepo = func(repo string) (bool, string) {
 			for _, regex := range filters {
 				if regex.MatchString(repo) {
-					return true
+					return true, regex.String()
 				}
 			}
 
-			return false
+			return false, ""
 		}
 	} else {
-		testRepo = func(_ string) bool { return false }
+		testRepo = func(_ string) (bool, string) { return false, "" }
 	}
 
 	copyToReposToCheck := func(repoResponses []RepoResponse) {
 		for _, repo := range repoResponses {
 			if config.ExcludeForks && repo.Fork {
+				log(Info, nil, fmt.Sprintf("Skipping forked repository %s", repo.Full_Name))
 				continue
 			}
 
-			if testRepo(repo.Full_Name) {
+			if matched, pat := testRepo(repo.Full_Name); matched {
+				log(Info, nil, fmt.Sprintf("Skipping repository %s, matched %s", repo.Full_Name, pat))
 				continue
 			}
 

@@ -12,7 +12,7 @@ type Commit struct {
 	Root      bool
 }
 
-func commit_new(repo Repo, hash string, timestamp uint64) Commit {
+func commit_new(repo *Repo, hash string, timestamp uint64) Commit {
 	return Commit{
 		Hash:      hash,
 		Timestamp: timestamp,
@@ -20,7 +20,7 @@ func commit_new(repo Repo, hash string, timestamp uint64) Commit {
 	}
 }
 
-func commit_is_root(repo Repo, hash string) bool {
+func commit_is_root(repo *Repo, hash string) bool {
 	_, stderr, err := run_git_sync(repo.Path, "rev-parse", hash+"^")
 
 	if strings.Contains(stderr, "unknown revision or path not in the working tree") {
@@ -56,7 +56,7 @@ func commits_insert_sorted_unique(commits []Commit, commit Commit) []Commit {
 	return commits
 }
 
-func (commit Commit) get_diffs(repo Repo) []Diff {
+func (commit Commit) get_diffs(repo *Repo) []Diff {
 	ret := []Diff{}
 
 	var prev_commit string
