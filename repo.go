@@ -17,7 +17,7 @@ type Repo struct {
 	Path            string
 	VendoredFilters []*regexp.Regexp
 	Files           []string
-	FileLangMap     map[string]string
+	FileLangMap     map[string][]string
 	FileSkipMap     map[string]bool
 	CurrentCommit   Commit
 	LatestCommit    Commit
@@ -34,7 +34,7 @@ func repo_new(repo_id string) Repo {
 	ret.Identifier = repo_id
 	ret.Path = repo_path(repo_id)
 
-	ret.FileLangMap = map[string]string{}
+	ret.FileLangMap = map[string][]string{}
 	ret.FileSkipMap = map[string]bool{}
 	ret.LogID = -1
 
@@ -240,16 +240,20 @@ func (repo *Repo) repo_count_by_commit() map[string]int {
 				continue
 			}
 
-			lang := diff.get_language(repo)
+			langs := diff.get_languages(repo)
+			if len(langs) > 1 {
+				log(Warning, repo, fmt.Sprintf("Potentially multiple languages found for file %s: %s", diff.File, langs))
+			}
 
-			if len(lang) == 0 {
-				lang = "Unknown"
+			if len(langs) == 0 {
+				langs = append(langs, "Unknown")
 			}
 
 			if config.Countloc {
-				ret[lang] += int(diff.Added - diff.Removed)
+				ret[langs[0]] += int(diff.Added - diff.Removed)
 			} else {
-				ret[lang] += int(diff.Added + diff.Removed)
+
+				ret[langs[0]] += int(diff.Added + diff.Removed)
 			}
 		}
 	}

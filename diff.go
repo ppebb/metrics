@@ -36,7 +36,7 @@ func (diff Diff) should_skip(repo *Repo) bool {
 	return ret
 }
 
-func (diff Diff) get_language(repo *Repo) string {
+func (diff Diff) get_languages(repo *Repo) []string {
 	if stored, ok := repo.FileLangMap[diff.File]; ok {
 		return stored
 	}
@@ -46,8 +46,8 @@ func (diff Diff) get_language(repo *Repo) string {
 	data, err := os.ReadFile(fpath)
 	check(err)
 
-	lang := enry.GetLanguage(diff.File, data)
-	repo.FileLangMap[diff.File] = lang
+	langs := enry.GetLanguages(diff.File, data)
+	repo.FileLangMap[diff.File] = langs
 
-	return lang
+	return langs
 }
