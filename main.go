@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"runtime/debug"
 	"strings"
 	"sync"
 )
@@ -94,13 +95,14 @@ func main() {
 
 		defer func() {
 			if r := recover(); r != nil {
-				pstr := strings.Replace(fmt.Sprint(r), "\n", "", -1)
-				log(Critical, lastRepo, fmt.Sprintf("Panic caught, %s, exiting...", pstr))
+				log(Critical, lastRepo, fmt.Sprintf("Panic caught, %s, exiting...\n%s", r, debug.Stack()))
 
 				if lastRepo != nil {
+					log(Info, lastRepo, fmt.Sprintf("Reverting to branch %s", lastRepo.LatestBranch))
 					lastRepo.checkout_branch(lastRepo.LatestBranch)
 				}
 
+				pstr := strings.Replace(fmt.Sprint(r), "\n", "", -1)
 				log_progress(lastRepo, fmt.Sprintf("Panic caught, %s, exiting...", pstr), -1)
 				closeOnce()
 			}
