@@ -199,7 +199,12 @@ func (repo *Repo) skip_file_data(repo_file string, data []byte) bool {
 func (repo *Repo) repo_count() map[string]int {
 	ret := map[string]int{}
 
-	for _, repo_file := range repo.Files {
+	flen := float64(len(repo.Files))
+	for i, repo_file := range repo.Files {
+		msg := fmt.Sprintf("Counting file %s", repo_file)
+		log_progress(repo, msg, float64(i)/flen)
+		log(Info, repo, msg)
+
 		fpath := path.Join(repo.Path, repo_file)
 
 		if repo.skip_file_name(repo_file, fpath) {
@@ -218,8 +223,15 @@ func (repo *Repo) repo_count() map[string]int {
 			log(Warning, repo, fmt.Sprintf("Potentially multiple languages found for file %s: %s", fpath, langs))
 		}
 
+		if len(langs) == 0 {
+			langs = append(langs, "Unknown")
+		}
+
 		ret[langs[0]] += bytes.Count(data, []byte{'\n'})
 	}
+
+	log(Info, repo, "Finished")
+	log_progress(repo, "Finished", 1)
 
 	return ret
 }
