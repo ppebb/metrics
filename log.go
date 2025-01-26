@@ -159,6 +159,7 @@ func log_progress(repo *Repo, message string, completion float64) {
 
 	line := min(termHeight, cursorY) - (counter - repo.LogID)
 	message = strings.ReplaceAll(message, "\n", "")
+	message = strings.ReplaceAll(message, "\t", " ")
 	front := fmt.Sprintf("%s > %s", repo.Identifier, message)
 	progWidth := math.Floor(1.0 / 3.0 * float64(termWidth))
 	lenHash := int(math.Floor(progWidth * completion))
@@ -181,7 +182,7 @@ func log_progress(repo *Repo, message string, completion float64) {
 
 	spaceLen := termWidth - len(front) - len(prog) - len(perc)
 	if spaceLen <= 0 {
-		front = fmt.Sprintf("%s ...", front[:(len(front)+spaceLen)-4])
+		front = fmt.Sprintf("%s ... ", front[:(len(front)+spaceLen)-5])
 		spaceLen = 0
 	}
 	space := strings.Repeat(" ", spaceLen)
