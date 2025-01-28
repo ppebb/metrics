@@ -131,7 +131,7 @@ func (repo *Repo) repo_pull_or_clone() {
 }
 
 func (repo *Repo) refresh() {
-	repo.VendoredFilters = repo.vendored_filters()
+	// repo.VendoredFilters = repo.vendored_filters()
 	repo.Files = repo_files(repo.Path)
 }
 

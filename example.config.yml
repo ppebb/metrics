@@ -1,6 +1,10 @@
 location: "./repos"
 indepth: true
 countloc: false
+langscount: 5
+style:
+  type: "compact"
+  count: "lines"
 token: "scopeless access token"
 excludeforks: true
 parallel: 8
@@ -26,3 +30,6 @@ ignore:
   image: true
   test: true
   generated: true
+  langs:
+    - "CSV"
+    - "Roff Manpage"

@@ -65,6 +65,11 @@ func main() {
 		panic("Missing config argument, provide a config.yml with -c or --config")
 	}
 
+	if len(outputPath) == 0 {
+		fmt.Println("No output path specified! Defaulting to ./langs.svg")
+		outputPath = "./langs.svg"
+	}
+
 	log_init()
 	defer log_close()
 	config_init(config_path)
@@ -158,7 +163,5 @@ func main() {
 		return
 	}
 
-	for k, v := range cumulativeLangs.v {
-		fmt.Println(k, v)
-	}
+	create_svg(cumulativeLangs.v)
 }

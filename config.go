@@ -9,16 +9,21 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-func check_field(l int, name string) {
-	if l == 0 {
+func check_empty[T string | []string](t T, name string) {
+	if len(t) == 0 {
 		panic(fmt.Sprintf("Config is missing field %s!", name))
 	}
 }
 
 type Config struct {
-	Location     string
-	Indepth      bool
-	Countloc     bool
+	Location   string
+	Indepth    bool
+	Countloc   bool
+	LangsCount int
+	Style      struct {
+		Type  string
+		Count string
+	}
 	Token        string
 	ExcludeForks bool
 	Parallel     uint8
@@ -35,6 +40,7 @@ type Config struct {
 		Test          bool
 		Binary        bool
 		Generated     bool
+		Langs         []string
 	}
 }
 
@@ -50,9 +56,20 @@ func config_init(path string) {
 	err = yaml.Unmarshal(data, &config)
 	check(err)
 
-	check_field(len(config.Location), "location")
-	check_field(len(config.Repositories), "repositories")
-	check_field(len(config.Authors), "authors")
+	check_empty(config.Location, "location")
+	check_empty(config.Repositories, "repositories")
+	check_empty(config.Authors, "authors")
+	check_empty(config.Style.Type, "style.type")
+	check_empty(config.Style.Count, "style.count")
+	check_empty(config.Token, "token")
+
+	if config.Parallel == 0 {
+		config.Parallel = 1
+	}
+
+	if config.LangsCount == 0 {
+		config.LangsCount = 5
+	}
 
 	err = os.MkdirAll(config.Location, os.FileMode(0777))
 	check(err)

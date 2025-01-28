@@ -1,6 +1,7 @@
 package main
 
 import (
+	"cmp"
 	"slices"
 	"strconv"
 	"strings"
@@ -33,17 +34,7 @@ func commit_is_root(repo *Repo, hash string) bool {
 }
 
 func compare_commit(c1 Commit, c2 Commit) int {
-	v1 := c1.Timestamp
-	v2 := c2.Timestamp
-	if v1 == v2 {
-		return 0
-	}
-
-	if v1 < v2 {
-		return -1
-	}
-
-	return 1
+	return cmp.Compare(c1.Timestamp, c2.Timestamp)
 }
 
 func commits_insert_sorted_unique(commits []Commit, commit Commit) []Commit {
