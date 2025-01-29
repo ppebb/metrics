@@ -25,10 +25,12 @@ var isTerminal bool
 var termWidth int
 var termHeight int
 var cursorY int
+var silent bool
 
-func log_init() {
+func log_init(isSilent bool) {
 	progMu = sync.Mutex{}
 	counter = -1
+	silent = isSilent
 
 	logFd, err := os.Create("./logs")
 	check(err)
@@ -36,6 +38,10 @@ func log_init() {
 	fd = fdSafe{
 		mu: sync.Mutex{},
 		fd: logFd,
+	}
+
+	if silent {
+		return
 	}
 
 	o, err := os.Stdout.Stat()
@@ -50,12 +56,14 @@ func log_init() {
 		termWidth = int(ws.Col)
 		termHeight = int(ws.Row)
 		fmt.Print("\x1b[?25l")
+
+		cursorY = log_get_cursor_pos()
 	}
 }
 
-func log_populate_cursor_pos() {
+func log_get_cursor_pos() int {
 	if !isTerminal {
-		return
+		return -1
 	}
 
 	tIOS, err := unix.IoctlGetTermios(0, unix.TCGETS)
@@ -81,7 +89,7 @@ func log_populate_cursor_pos() {
 		row, err := strconv.Atoi(strings.Split(line, ";")[0])
 		check(err)
 
-		cursorY = row - 1
+		return row - 1
 	} else {
 		panic("Unable to determine cursor position")
 	}
@@ -122,7 +130,7 @@ func (e LogLevel) String() string {
 	}
 }
 
-func log(level LogLevel, repo *Repo, message string) {
+func log_echo(level LogLevel, repo *Repo, message string, echo bool) {
 	fd.mu.Lock()
 	defer fd.mu.Unlock()
 
@@ -134,10 +142,18 @@ func log(level LogLevel, repo *Repo, message string) {
 	}
 
 	fd.fd.WriteString(msg)
+
+	if echo && !silent {
+		fmt.Println(msg)
+	}
+}
+
+func log(level LogLevel, repo *Repo, message string) {
+	log_echo(level, repo, message, false)
 }
 
 func log_progress(repo *Repo, message string, completion float64) {
-	if !isTerminal {
+	if !isTerminal || silent {
 		return
 	}
 

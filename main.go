@@ -28,6 +28,7 @@ Usage: ./ppebtrics [OPTIONS]
  -c|--config           Specify the path to your config.yml
  -o|--output           Specify the output path of your svg
  -d|--dry-run          Dry run! List the repos to be cloned and analyzed
+ -s|--silent           Don't output to stdout
 `)
 
 	os.Exit(1)
@@ -36,6 +37,7 @@ Usage: ./ppebtrics [OPTIONS]
 func main() {
 	var config_path string
 	var dryRun = false
+	var silent = false
 
 	argsLen := len(os.Args)
 	for i := 1; i < argsLen; i++ {
@@ -55,6 +57,8 @@ func main() {
 			}
 		case "-d", "--dry-run":
 			dryRun = true
+		case "-s", "--silent":
+			silent = true
 		default:
 			fmt.Printf("Unknown argument %s!\n", arg)
 			print_help()
@@ -70,10 +74,9 @@ func main() {
 		outputPath = "./langs.svg"
 	}
 
-	log_init()
+	log_init(silent)
 	defer log_close()
 	config_init(config_path)
-	log_populate_cursor_pos()
 
 	if dryRun {
 		fmt.Println("The following repositories will be cloned and analyzed:")

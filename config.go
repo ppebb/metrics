@@ -112,12 +112,12 @@ func config_init(path string) {
 	copyToReposToCheck := func(repoResponses []RepoResponse) {
 		for _, repo := range repoResponses {
 			if config.ExcludeForks && repo.Fork {
-				log(Info, nil, fmt.Sprintf("Skipping forked repository %s", repo.Full_Name))
+				log_echo(Info, nil, fmt.Sprintf("Skipping forked repository %s", repo.Full_Name), true)
 				continue
 			}
 
 			if matched, pat := testRepo(repo.Full_Name); matched {
-				log(Info, nil, fmt.Sprintf("Skipping repository %s, matched %s", repo.Full_Name, pat))
+				log_echo(Info, nil, fmt.Sprintf("Skipping repository %s, matched filter %s", repo.Full_Name, pat), true)
 				continue
 			}
 
@@ -128,12 +128,12 @@ func config_init(path string) {
 	}
 
 	for _, user := range config.Users {
-		fmt.Printf("Fetching repositories for user %s\n", user)
+		log_echo(Info, nil, fmt.Sprintf("Fetching repositories for user %s", user), true)
 		copyToReposToCheck(github_get_account_repos(user, false, config.Token))
 	}
 
 	for _, org := range config.Orgs {
-		fmt.Printf("Fetching repositories for org %s\n", org)
+		log_echo(Info, nil, fmt.Sprintf("Fetching repositories for org %s", org), true)
 		copyToReposToCheck(github_get_account_repos(org, true, config.Token))
 	}
 }
