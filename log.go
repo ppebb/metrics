@@ -134,10 +134,6 @@ func log(level LogLevel, repo *Repo, message string) {
 	}
 
 	fd.fd.WriteString(msg)
-
-	if !isTerminal {
-		fmt.Print(msg)
-	}
 }
 
 func log_progress(repo *Repo, message string, completion float64) {
