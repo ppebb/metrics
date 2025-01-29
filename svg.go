@@ -4,6 +4,7 @@ import (
 	"cmp"
 	"fmt"
 	"io"
+	"math"
 	"os"
 	"slices"
 	"strconv"
@@ -28,6 +29,41 @@ func fmt_int(n int) string {
 	}
 
 	return numStr
+}
+
+func fmt_double(n float64) string {
+	return strings.TrimRight(fmt.Sprintf("%.2f", n), "0")
+}
+
+func fmt_bytes(n int, base int) string {
+	var prefix []string
+
+	prefix_1000 := []string{"", "k", "M", "G", "T", "P", "E", "Z", "Y"}
+	prefix_1024 := []string{"", "Ki", "Mi", "Gi", "Ti", "Pi", "Ei", "Zi", "Yi"}
+
+	switch base {
+	case 1000:
+		prefix = prefix_1000
+	case 1024:
+		prefix = prefix_1024
+	default:
+		panic("wrong prefix")
+	}
+
+	fbase := float64(base)
+	scaled := float64(n)
+	j := 0
+	for i := range prefix {
+		j = i
+
+		if scaled <= fbase {
+			break
+		}
+
+		scaled /= fbase
+	}
+
+	return fmt.Sprintf("%s %s", fmt_double(scaled), prefix[j])
 }
 
 func indent(s string, by int) string {
@@ -243,6 +279,7 @@ type EntryData struct {
 	PercStr    string
 	Delay      int
 	FillDelay  int
+	RectX      int
 	RectW      int
 	Color      string
 }
@@ -273,15 +310,16 @@ func process_template(data SVGData, writer io.Writer) {
 
 func create_compact(totalLines float64, langsSorted []langLinePair, outputFile *os.File) {
 	const MASK = `<mask id="rect-mask">
-	<rect x="0" y="0" width="%d" height="8" fill="white" rx="5" />
+	<rect x="%d" y="0" width="%d" height="8" fill="white" rx="5" />
 </mask>` + "\n"
 
-	const SVGENTRY = `<g transform="translate({{ .XOffset }}, {{ .YOffset }})">
+	const SVGENTRY = `<rect mask="url(#rect-mask)" x="{{ .RectX }}" y="0" width="{{ .RectW }}" height="8" fill="{{ .Color }}" />
+<g transform="translate({{ .XOffset }}, {{ .YOffset }})">
 	<g class="stagger" style="animation-delay: {{ .Delay }}ms">
-		<circle r="4" cx="{{ if eq .XOffset 0 }} 31 {{ else }} 15 {{ end }}" cy="14" fill="{{ .Color }}" />
-		<text data-testid="lang-name" x="{{ if eq .XOffset 0 }} 51 {{ else }} 29 {{ end }}" y="15" class="lang-name">{{ .LangName }}</text>
-		{{ if eq .CountStr "" }} {{ else }} <text x="{{ if eq .XOffset 0 }} {{ $half := div .TotalWidth 2 }}{{ sub $half 60 }} {{ else }} {{ $half := div .TotalWidth 2 }}{{ sub $half 76 }} {{ end }}" y="15" class="lang-name lang-perc">{{ .CountStr }}</text> {{ end }}
-		<text x="{{ if eq .XOffset 0 }} {{ $half := div .TotalWidth 2 }}{{ sub $half 15 }} {{ else }} {{ $half := div .TotalWidth 2 }}{{ sub $half 31 }} {{ end }}" y="15" class="lang-name lang-perc">{{ .PercStr }}%</text>
+		<circle r="4" cx="{{ if eq .XOffset 0 }} 31 {{ else }} 15 {{ end }}" cy="31" fill="{{ .Color }}" />
+		<text data-testid="lang-name" x="{{ if eq .XOffset 0 }} 51 {{ else }} 29 {{ end }}" y="32" class="lang-name">{{ .LangName }}</text>
+		{{ if eq .CountStr "" }} {{ else }} <text x="{{ if eq .XOffset 0 }} {{ $half := div .TotalWidth 2 }}{{ sub $half 60 }} {{ else }} {{ $half := div .TotalWidth 2 }}{{ sub $half 76 }} {{ end }}" y="32" class="lang-name lang-perc">{{ .CountStr }}</text> {{ end }}
+		<text x="{{ if eq .XOffset 0 }} {{ $half := div .TotalWidth 2 }}{{ sub $half 15 }} {{ else }} {{ $half := div .TotalWidth 2 }}{{ sub $half 31 }} {{ end }}" y="32" class="lang-name lang-perc">{{ .PercStr }}%</text>
 	</g>
 </g>`
 
@@ -299,9 +337,15 @@ func create_compact(totalLines float64, langsSorted []langLinePair, outputFile *
 	count := len(langsSorted)
 	entries := make([]EntryData, count)
 
+	// totalRectW := int(float64(width) * 0.8)
+	// rectXInitial := int(float64(width-totalRectW) / 2)
+	totalRectW := width - 50
+	rectXInitial := 25
+	rectX := rectXInitial
+
 	for i, lp := range langsSorted {
 		perc := float64(lp.lines) / totalLines
-		percStr := strings.TrimRight(fmt.Sprintf("%.2f", perc*100), "0")
+		percStr := fmt_double(perc * 100)
 		percStrLen := len(percStr)
 
 		if percStr[percStrLen-1] == '.' {
@@ -311,6 +355,15 @@ func create_compact(totalLines float64, langsSorted []langLinePair, outputFile *
 		countStr := ""
 		if config.Style.Count == "lines" {
 			countStr = fmt.Sprintf("%s lines", fmt_int(lp.lines))
+		} else {
+			countStr = fmt.Sprintf("%sB", fmt_bytes(lp.lines, config.Style.BytesBase))
+		}
+
+		rectW := int(math.Round(perc * float64(totalRectW)))
+
+		// Forcibly overflow since it'll get masked off, in case it's a pixel or two short...
+		if i == count-1 {
+			rectW = rectW + 20
 		}
 
 		entries[i] = EntryData{
@@ -322,16 +375,19 @@ func create_compact(totalLines float64, langsSorted []langLinePair, outputFile *
 			PercStr:    percStr,
 			Delay:      450 + i*150,
 			FillDelay:  750 + i*150,
-			RectW:      max(int(perc*100), 2),
+			RectX:      rectX,
+			RectW:      rectW,
 			Color:      enry.GetColor(lp.lang),
 		}
+
+		rectX += rectW
 	}
 
 	process_template(SVGData{
 		Width:   width,
-		Height:  (count/2)*20 + 85,
+		Height:  int(math.Ceil((float64(count)/2.0)))*20 + 95,
 		TitleX:  width / 2,
-		Entries: MASK + process_entries(tmpl, entries),
+		Entries: fmt.Sprintf(MASK, rectXInitial, totalRectW) + process_entries(tmpl, entries),
 		Styles: `.header { text-anchor: middle; }
 .lang-name { dominant-baseline: middle }
 .lang-perc { text-anchor: end; }`,
@@ -361,7 +417,7 @@ func create_vertical(totalLines float64, langsSorted []langLinePair, outputFile 
 
 	for i, lp := range langsSorted {
 		perc := float64(lp.lines) / totalLines
-		percStr := strings.TrimRight(fmt.Sprintf("%.2f", perc*100), "0")
+		percStr := fmt_double(perc * 100)
 		percStrLen := len(percStr)
 
 		if percStr[percStrLen-1] == '.' {
@@ -371,6 +427,8 @@ func create_vertical(totalLines float64, langsSorted []langLinePair, outputFile 
 		countStr := ""
 		if config.Style.Count == "lines" {
 			countStr = fmt.Sprintf("(%s lines)", fmt_int(lp.lines))
+		} else {
+			countStr = fmt.Sprintf("(%sB)", fmt_bytes(lp.lines, config.Style.BytesBase))
 		}
 
 		entries[i] = EntryData{

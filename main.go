@@ -127,9 +127,9 @@ func main() {
 
 				var counts map[string]int
 				if config.Indepth {
-					counts = repo.repo_count_by_commit()
+					counts = repo.repo_count_by_commit(config.Style.Count == "lines")
 				} else {
-					counts = repo.repo_count()
+					counts = repo.repo_count(config.Style.Count == "lines")
 				}
 
 				cumulativeLangs.mu.Lock()

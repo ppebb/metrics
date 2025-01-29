@@ -18,11 +18,12 @@ func check_empty[T string | []string](t T, name string) {
 type Config struct {
 	Location   string
 	Indepth    bool
-	Countloc   bool
+	CountTotal bool
 	LangsCount int
 	Style      struct {
-		Type  string
-		Count string
+		Type      string
+		Count     string
+		BytesBase int
 	}
 	Token        string
 	ExcludeForks bool
@@ -62,6 +63,10 @@ func config_init(path string) {
 	check_empty(config.Style.Type, "style.type")
 	check_empty(config.Style.Count, "style.count")
 	check_empty(config.Token, "token")
+
+	if config.Style.Count == "bytes" && config.Style.BytesBase != 1000 && config.Style.BytesBase != 1024 {
+		panic("config.style.bytesbase must be either 1000 or 1024!")
+	}
 
 	if config.Parallel == 0 {
 		config.Parallel = 1

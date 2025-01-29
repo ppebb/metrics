@@ -1,10 +1,11 @@
 location: "./repos"
 indepth: true
-countloc: false
+counttotal: false
 langscount: 5
 style:
   type: "compact"
   count: "lines"
+  bytesbase: 1024
 token: "scopeless access token"
 excludeforks: true
 parallel: 8

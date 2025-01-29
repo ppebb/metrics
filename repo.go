@@ -196,7 +196,7 @@ func (repo *Repo) skip_file_data(repo_file string, data []byte) bool {
 	return false
 }
 
-func (repo *Repo) repo_count() map[string]int {
+func (repo *Repo) repo_count(lines bool) map[string]int {
 	ret := map[string]int{}
 
 	flen := float64(len(repo.Files))
@@ -227,7 +227,11 @@ func (repo *Repo) repo_count() map[string]int {
 			langs = append(langs, "Unknown")
 		}
 
-		ret[langs[0]] += bytes.Count(data, []byte{'\n'})
+		if lines {
+			ret[langs[0]] += bytes.Count(data, []byte{'\n'})
+		} else {
+			ret[langs[0]] += len(data)
+		}
 	}
 
 	log(Info, repo, "Finished")
@@ -236,7 +240,7 @@ func (repo *Repo) repo_count() map[string]int {
 	return ret
 }
 
-func (repo *Repo) repo_count_by_commit() map[string]int {
+func (repo *Repo) repo_count_by_commit(lines bool) map[string]int {
 	ret := map[string]int{}
 
 	commits := repo.get_matching_commits()
@@ -247,7 +251,14 @@ func (repo *Repo) repo_count_by_commit() map[string]int {
 		log(Info, repo, msg)
 		repo.checkout_commit(commit)
 
-		for _, diff := range commit.get_diffs(repo) {
+		var diffs []Diff
+		if lines {
+			diffs = commit.get_diffs_lines(repo)
+		} else {
+			diffs = commit.get_diffs_bytes(repo)
+		}
+
+		for _, diff := range diffs {
 			if diff.should_skip(repo) {
 				continue
 			}
@@ -261,10 +272,9 @@ func (repo *Repo) repo_count_by_commit() map[string]int {
 				langs = append(langs, "Unknown")
 			}
 
-			if config.Countloc {
+			if config.CountTotal {
 				ret[langs[0]] += int(diff.Added - diff.Removed)
 			} else {
-
 				ret[langs[0]] += int(diff.Added + diff.Removed)
 			}
 		}
