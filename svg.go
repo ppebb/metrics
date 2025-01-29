@@ -134,7 +134,7 @@ func create_svg(langs map[string]int) {
 	case "compact":
 		create_compact(float64(totalLines), langsSorted, outputFile)
 	default:
-		panic(fmt.Sprintf("Unknown style %s", config.Style))
+		panic(fmt.Sprintf("Unknown style %s", config.Style.Type))
 	}
 }
 
@@ -270,21 +270,7 @@ const SVGTEMPLATESTRING = `<svg width="{{ .Width }}" height="{{ .Height }}" view
 </svg>
 `
 
-type EntryData struct {
-	LangName   string
-	TotalWidth int
-	XOffset    int
-	YOffset    int
-	CountStr   string
-	PercStr    string
-	Delay      int
-	FillDelay  int
-	RectX      int
-	RectW      int
-	Color      string
-}
-
-func process_entries(tmpl *template.Template, data []EntryData) string {
+func process_entries[T any](tmpl *template.Template, data []T) string {
 	builder := new(strings.Builder)
 	dlen := len(data)
 
@@ -308,6 +294,20 @@ func process_template(data SVGData, writer io.Writer) {
 	check(err)
 }
 
+type CompactEntryData struct {
+	LangName   string
+	TotalWidth int
+	XOffset    int
+	YOffset    int
+	CountStr   string
+	PercStr    string
+	Delay      int
+	FillDelay  int
+	RectX      int
+	RectW      int
+	Color      string
+}
+
 func create_compact(totalLines float64, langsSorted []langLinePair, outputFile *os.File) {
 	const MASK = `<mask id="rect-mask">
 	<rect x="%d" y="0" width="%d" height="8" fill="white" rx="5" />
@@ -316,10 +316,10 @@ func create_compact(totalLines float64, langsSorted []langLinePair, outputFile *
 	const SVGENTRY = `<rect mask="url(#rect-mask)" x="{{ .RectX }}" y="0" width="{{ .RectW }}" height="8" fill="{{ .Color }}" />
 <g transform="translate({{ .XOffset }}, {{ .YOffset }})">
 	<g class="stagger" style="animation-delay: {{ .Delay }}ms">
-		<circle r="4" cx="{{ if eq .XOffset 0 }} 31 {{ else }} 15 {{ end }}" cy="31" fill="{{ .Color }}" />
-		<text data-testid="lang-name" x="{{ if eq .XOffset 0 }} 51 {{ else }} 29 {{ end }}" y="32" class="lang-name">{{ .LangName }}</text>
-		{{ if eq .CountStr "" }} {{ else }} <text x="{{ if eq .XOffset 0 }} {{ $half := div .TotalWidth 2 }}{{ sub $half 60 }} {{ else }} {{ $half := div .TotalWidth 2 }}{{ sub $half 76 }} {{ end }}" y="32" class="lang-name lang-perc">{{ .CountStr }}</text> {{ end }}
-		<text x="{{ if eq .XOffset 0 }} {{ $half := div .TotalWidth 2 }}{{ sub $half 15 }} {{ else }} {{ $half := div .TotalWidth 2 }}{{ sub $half 31 }} {{ end }}" y="32" class="lang-name lang-perc">{{ .PercStr }}%</text>
+		<circle r="4" cx="31" cy="31" fill="{{ .Color }}" />
+		<text data-testid="lang-name" x="51" y="32" class="lang-name">{{ .LangName }}</text>
+		{{ if eq .CountStr "" }} {{ else }} <text x="{{ $half := div .TotalWidth 2 }}{{ sub $half 57 }}" y="32" class="lang-name lang-perc">{{ .CountStr }}</text> {{ end }}
+		<text x="{{ $half := div .TotalWidth 2 }}{{ sub $half 13 }}" y="32" class="lang-name lang-perc">{{ .PercStr }}%</text>
 	</g>
 </g>`
 
@@ -335,7 +335,7 @@ func create_compact(totalLines float64, langsSorted []langLinePair, outputFile *
 	}
 
 	count := len(langsSorted)
-	entries := make([]EntryData, count)
+	entries := make([]CompactEntryData, count)
 
 	// totalRectW := int(float64(width) * 0.8)
 	// rectXInitial := int(float64(width-totalRectW) / 2)
@@ -366,10 +366,10 @@ func create_compact(totalLines float64, langsSorted []langLinePair, outputFile *
 			rectW = rectW + 20
 		}
 
-		entries[i] = EntryData{
+		entries[i] = CompactEntryData{
 			LangName:   lp.lang,
 			TotalWidth: width,
-			XOffset:    i % 2 * (width / 2),
+			XOffset:    i % 2 * ((width / 2) - 12),
 			YOffset:    i / 2 * 20,
 			CountStr:   countStr,
 			PercStr:    percStr,
@@ -394,6 +394,18 @@ func create_compact(totalLines float64, langsSorted []langLinePair, outputFile *
 	}, outputFile)
 }
 
+type VerticalEntryData struct {
+	LangName  string
+	XOffset   int
+	YOffset   int
+	CountStr  string
+	PercStr   string
+	Delay     int
+	FillDelay int
+	RectW     int
+	Color     string
+}
+
 func create_vertical(totalLines float64, langsSorted []langLinePair, outputFile *os.File) {
 	const SVGENTRY = `<g transform="translate({{ .XOffset }}, {{ .YOffset }})">
 	<g class="stagger" style="animation-delay: {{ .Delay }}ms">
@@ -413,7 +425,7 @@ func create_vertical(totalLines float64, langsSorted []langLinePair, outputFile 
 	check(err)
 
 	count := len(langsSorted)
-	entries := make([]EntryData, count)
+	entries := make([]VerticalEntryData, count)
 
 	for i, lp := range langsSorted {
 		perc := float64(lp.lines) / totalLines
@@ -431,7 +443,7 @@ func create_vertical(totalLines float64, langsSorted []langLinePair, outputFile 
 			countStr = fmt.Sprintf("(%sB)", fmt_bytes(lp.lines, config.Style.BytesBase))
 		}
 
-		entries[i] = EntryData{
+		entries[i] = VerticalEntryData{
 			LangName:  lp.lang,
 			XOffset:   25,
 			YOffset:   i * 40,
