@@ -154,11 +154,6 @@ func create_svg(langs map[string]*LineBytePair) {
 	}
 }
 
-type SVGTheme struct {
-	CardTitle string
-	CardBG    string
-}
-
 type SVGData struct {
 	Width   int
 	Height  int
@@ -168,7 +163,8 @@ type SVGData struct {
 	Theme   SVGTheme
 }
 
-const SVGTEMPLATESTRING = `<svg width="{{ .Width }}" height="{{ .Height }}" viewBox="0 0 {{ .Width }} {{ .Height }}" fill="none" xmlns="http://www.w3.org/2000/svg" role="img"
+const SVGTEMPLATESTRING = `<svg width="{{ .Width }}" height="{{ .Height }}" viewBox="0 0 {{ .Width }}
+		{{ .Height }}" fill="none" xmlns="http://www.w3.org/2000/svg" role="img"
 	aria-labelledby="descId">
 	<title id="titleId"></title>
 	<desc id="descId"></desc>
@@ -176,12 +172,12 @@ const SVGTEMPLATESTRING = `<svg width="{{ .Width }}" height="{{ .Height }}" view
 {{ indent .Styles 2 }}
 		.header {
 			font: 600 18px 'Segoe UI', Ubuntu, Sans-Serif;
-			fill: #70a5fd;
+			fill: {{ .Theme.Header }};
 			animation: fadeInAnimation 0.8s ease-in-out forwards;
 		}
 
 		.rectbg {
-			fill: #ddd;
+			fill: {{ .Theme.RectBg }};
 		}
 
 		@supports(-moz-appearance: auto) {
@@ -212,26 +208,24 @@ const SVGTEMPLATESTRING = `<svg width="{{ .Width }}" height="{{ .Height }}" view
 			}
 		}
 
-		.stat {
-			font: 600 14px 'Segoe UI', Ubuntu, "Helvetica Neue", Sans-Serif;
-			fill: #38bdae;
-		}
-
-		@supports(-moz-appearance: auto) {
-
-			/* Selector detects Firefox */
-			.stat {
-				font-size: 12px;
-			}
-		}
-
 		.bold {
-			font-weight: 700
+			font-weight: 700;
+		}
+
+		.lang-name, .lang-count, .lang-perc {
+			font: 400 11px "Segoe UI", Ubuntu, Sans-Serif;
 		}
 
 		.lang-name {
-			font: 400 11px "Segoe UI", Ubuntu, Sans-Serif;
-			fill: #38bdae;
+			fill: {{ .Theme.LangName }};
+		}
+
+		.lang-count {
+			fill: {{ .Theme.Count }};
+		}
+
+		.lang-perc {
+			fill: {{ .Theme.Percent }};
 		}
 
 		.stagger {
@@ -269,8 +263,8 @@ const SVGTEMPLATESTRING = `<svg width="{{ .Width }}" height="{{ .Height }}" view
 		}
 	</style>
 
-	<rect data-testid="card-bg" x="0.5" y="0.5" rx="4.5" height="100%" stroke="#e4e2e2" width="100%" fill="#1a1b27"
-		stroke-opacity="0" />
+	<rect data-testid="card-bg" x="0.5" y="0.5" rx="4.5" height="100%" stroke="{{ .Theme.CardStroke }}" width="100%"
+		fill="{{ .Theme.CardBG }}" stroke-opacity="0" />
 
 	<g data-testid="card-title" transform="translate(0, 35)">
 		<g transform="translate(0, 0)">
@@ -303,6 +297,7 @@ func process_entries[T any](tmpl *template.Template, data []T) string {
 }
 
 func process_template(data SVGData, writer io.Writer) {
+	data.Theme = theme
 	tmpl, err := template.New("svg").Funcs(svgTmplFuncMap).Parse(SVGTEMPLATESTRING)
 	check(err)
 
@@ -334,8 +329,8 @@ func create_compact(totalLines float64, langsSorted []LangLineByteTriplet, outpu
 	<g class="stagger" style="animation-delay: {{ .Delay }}ms">
 		<circle r="4" cx="31" cy="31" fill="{{ .Color }}" />
 		<text data-testid="lang-name" x="51" y="32" class="lang-name">{{ .LangName }}</text>
-		{{ if eq .CountStr "" }} {{ else }} <text x="{{ $half := div .TotalWidth 2 }}{{ sub $half 57 }}" y="32" class="lang-name lang-perc">{{ .CountStr }}</text> {{ end }}
-		<text x="{{ $half := div .TotalWidth 2 }}{{ sub $half 13 }}" y="32" class="lang-name lang-perc">{{ .PercStr }}%</text>
+		{{ if eq .CountStr "" }} {{ else }} <text x="{{ $half := div .TotalWidth 2 }}{{ sub $half 57 }}" y="32" class="lang-count">{{ .CountStr }}</text> {{ end }}
+		<text x="{{ $half := div .TotalWidth 2 }}{{ sub $half 13 }}" y="32" class="lang-perc">{{ .PercStr }}%</text>
 	</g>
 </g>`
 
@@ -398,8 +393,8 @@ func create_compact(totalLines float64, langsSorted []LangLineByteTriplet, outpu
 		TitleX:  width / 2,
 		Entries: fmt.Sprintf(MASK, rectXInitial, totalRectW) + process_entries(tmpl, entries),
 		Styles: `.header { text-anchor: middle; }
-.lang-name { dominant-baseline: middle }
-.lang-perc { text-anchor: end; }`,
+.lang-name, .lang-perc, .lang-count { dominant-baseline: middle }
+.lang-perc, .lang-count { text-anchor: end; }`,
 	}, outputFile)
 }
 
@@ -418,8 +413,8 @@ type VerticalEntryData struct {
 func create_vertical(totalLines float64, langsSorted []LangLineByteTriplet, outputFile *os.File) {
 	const SVGENTRY = `<g transform="translate({{ .XOffset }}, {{ .YOffset }})">
 	<g class="stagger" style="animation-delay: {{ .Delay }}ms">
-		<text data-testid="lang-name" x="2" y="15" class="lang-name">{{ .LangName }} ({{.CountStr}})</text>
-		<text x="215" y="34" class="lang-name">{{ .PercStr }}%</text>
+		<text data-testid="lang-name" x="2" y="15" class="lang-name">{{ .LangName }} <tspan class="lang-count">({{ .CountStr }})</tspan></text>
+		<text x="215" y="33" class="lang-perc">{{ .PercStr }}%</text>
 		<svg width="205" x="0" y="25">
 			<rect class="rectbg" rx="5" ry="5" x="0" y="0" width="205" height="8"></rect>
 			<svg data-testid="lang-progress" width="{{ .RectW }}%">

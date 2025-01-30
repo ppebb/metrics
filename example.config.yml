@@ -3,6 +3,7 @@ indepth: true
 counttotal: false
 langscount: 5
 style:
+  theme: "./themes/tokyonight.yml"
   type: "compact"
   count: "lines"
   bytesbase: 1024

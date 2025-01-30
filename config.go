@@ -15,12 +15,23 @@ func check_empty[T string | []string](t T, name string) {
 	}
 }
 
+type SVGTheme struct {
+	CardBG     string
+	CardStroke string
+	Header     string
+	RectBg     string
+	LangName   string
+	Count      string
+	Percent    string
+}
+
 type Config struct {
 	Location   string
 	Indepth    bool
 	CountTotal bool
 	LangsCount int
 	Style      struct {
+		Theme     string
 		Type      string
 		Count     string
 		BytesBase int
@@ -47,6 +58,7 @@ type Config struct {
 
 var outputPath string
 var config Config
+var theme SVGTheme
 var reposToCheck []string
 
 func config_init(path string) {
@@ -62,7 +74,19 @@ func config_init(path string) {
 	check_empty(config.Authors, "authors")
 	check_empty(config.Style.Type, "style.type")
 	check_empty(config.Style.Count, "style.count")
+	check_empty(config.Style.Theme, "style.theme")
 	check_empty(config.Token, "token")
+
+	if !file_exists(config.Style.Theme) {
+		panic(fmt.Sprintf("config.style.theme (%s) does not exist on disk!", config.Style.Theme))
+	}
+
+	data, err = os.ReadFile(config.Style.Theme)
+	check(err)
+
+	theme = SVGTheme{}
+	err = yaml.Unmarshal(data, &theme)
+	check(err)
 
 	if config.Style.Count == "bytes" && config.Style.BytesBase != 1000 && config.Style.BytesBase != 1024 {
 		panic("config.style.bytesbase must be either 1000 or 1024!")
