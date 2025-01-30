@@ -113,6 +113,18 @@ func (commit Commit) get_diffs(repo *Repo) []Diff {
 			continue
 		}
 
+		if str_starts_with(line, "rename to") {
+			start := len("rename to ")
+			end := len(line)
+
+			if start == -1 || end == -1 {
+				log(Warning, repo, fmt.Sprintf("Patch line contained 'diff', but a/ was at %d and b/ was at %d", start, end))
+				continue
+			}
+
+			currentDiff.File = line[start:end]
+		}
+
 		c0 := line[0]
 		c1 := line[1:]
 
