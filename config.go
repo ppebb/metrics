@@ -70,12 +70,12 @@ func config_init(path string) {
 	check(err)
 
 	check_empty(config.Location, "location")
-	check_empty(config.Repositories, "repositories")
+	// check_empty(config.Repositories, "repositories")
 	check_empty(config.Authors, "authors")
 	check_empty(config.Style.Type, "style.type")
 	check_empty(config.Style.Count, "style.count")
 	check_empty(config.Style.Theme, "style.theme")
-	check_empty(config.Token, "token")
+	// check_empty(config.Token, "token")
 
 	if !file_exists(config.Style.Theme) {
 		panic(fmt.Sprintf("config.style.theme (%s) does not exist on disk!", config.Style.Theme))
@@ -159,5 +159,9 @@ func config_init(path string) {
 	for _, org := range config.Orgs {
 		log_echo(Info, nil, fmt.Sprintf("Fetching repositories for org %s", org), true)
 		copyToReposToCheck(github_get_account_repos(org, true, config.Token))
+	}
+
+	if len(reposToCheck) == 0 {
+		panic("There are no repositorites to check! Either all have been filtered or none were provided. See config.users, config.orgs, and config.repositorites")
 	}
 }

@@ -28,19 +28,16 @@ type Repo struct {
 	LogID int
 }
 
-func repo_new(repo_id string) Repo {
-	ret := Repo{}
+func repo_initialize(repo *Repo) {
+	repo.Path = repo_path(repo.Identifier)
 
-	ret.Identifier = repo_id
-	ret.Path = repo_path(repo_id)
+	repo.FileLangMap = map[string][]string{}
+	repo.FileSkipMap = map[string]bool{}
+	repo.LogID = -1
 
-	ret.FileLangMap = map[string][]string{}
-	ret.FileSkipMap = map[string]bool{}
-	ret.LogID = -1
+	repo.repo_pull_or_clone()
 
-	ret.repo_pull_or_clone()
-
-	return ret
+	log(Info, repo, fmt.Sprintf("Initialized repository at %s", repo.Path))
 }
 
 func repo_files(repo_path string) []string {
@@ -110,12 +107,21 @@ func (repo *Repo) repo_pull_or_clone() {
 		msg := "Cloning repository"
 		log_progress(repo, msg, 0)
 		log(Info, repo, msg)
-		run_git_sync(config.Location, "clone", "https://github.com/"+repo.Identifier+".git")
+		_, _, err := run_git_sync(config.Location, "clone", "https://github.com/"+repo.Identifier+".git")
+		check(err)
 	} else {
 		msg := fmt.Sprintf("Pulling repository at %s", repo.Path)
 		log_progress(repo, msg, 0)
 		log(Info, repo, msg)
-		run_git_sync(repo.Path, "pull")
+		_, _, err := run_git_sync(repo.Path, "pull")
+
+		// TODO: Better handling of empty repositories
+		if err != nil && strings.Contains(err.Error(), "no such ref was fetched") {
+			log_progress(repo, "Finished (empty repository)", 1)
+			return
+		} else {
+			check(err)
+		}
 	}
 
 	repo.VendoredFilters = repo.vendored_filters()
@@ -322,7 +328,11 @@ func (repo *Repo) get_matching_commits() []Commit {
 
 func (repo *Repo) get_latest_commit() Commit {
 	stdout, _, err := run_git_sync(repo.Path, "log", "-n", "1", "--pretty=format:%h %ct")
-	check(err)
+	if err != nil && strings.Contains(err.Error(), "does not have any commits yet") {
+		return Commit{}
+	} else {
+		check(err)
+	}
 
 	commit_line := strings.Trim(stdout, "\t\n\r ")
 	split := strings.Fields(commit_line)

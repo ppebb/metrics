@@ -98,14 +98,14 @@ func main() {
 	closed := false
 	closeOnce := sync.OnceFunc(func() { close(cancelChannel); closed = true })
 
-	countRepo := func(repos <-chan string, cancel <-chan bool, wg *sync.WaitGroup) {
+	countRepo := func(workerID int, repos <-chan string, cancel <-chan bool, wg *sync.WaitGroup) {
 		defer wg.Done()
 
 		var lastRepo *Repo
 
 		defer func() {
 			if r := recover(); r != nil {
-				log(Critical, lastRepo, fmt.Sprintf("Panic caught, %s, exiting...\n%s", r, debug.Stack()))
+				log(Critical, lastRepo, fmt.Sprintf("Panic caught in WorkerID %d: %s, exiting...\n%s", workerID, r, debug.Stack()))
 
 				if lastRepo != nil {
 					log(Info, lastRepo, fmt.Sprintf("Reverting to branch %s", lastRepo.LatestBranch))
@@ -127,8 +127,17 @@ func main() {
 					break REPOSLOOP
 				}
 			default:
-				repo := repo_new(id)
+				log(Info, nil, fmt.Sprintf("WorkerID %d: preparing to initialize repo %s", workerID, id))
+				repo := Repo{
+					Identifier: id,
+				}
+
 				lastRepo = &repo
+				repo_initialize(&repo)
+
+				if len(repo.LatestCommit.Hash) == 0 {
+					continue
+				}
 
 				var counts map[string]*LineBytePair
 				if config.Indepth {
@@ -157,7 +166,7 @@ func main() {
 
 	for i := 0; i < int(config.Parallel); i++ {
 		wg.Add(1)
-		go countRepo(repoChannel, cancelChannel, &wg)
+		go countRepo(i, repoChannel, cancelChannel, &wg)
 	}
 
 	for _, id := range reposToCheck {

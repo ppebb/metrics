@@ -33,10 +33,8 @@ func (diff Diff) should_skip(repo *Repo) bool {
 	di := fe && is_directory(fpath)
 	if !fe || sy || di {
 		log(Info, repo, fmt.Sprintf("Skipping path %s, exists: %t, symlink: %t, dir: %t", fpath, fe, sy, di))
-		return true
-	}
-
-	if repo.skip_file_name(diff.File) {
+		ret = true
+	} else if repo.skip_file_name(diff.File) {
 		ret = true
 	} else {
 		data, err := os.ReadFile(fpath)
