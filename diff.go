@@ -36,7 +36,7 @@ func (diff Diff) should_skip(repo *Repo) bool {
 		return true
 	}
 
-	if repo.skip_file_name(diff.File, fpath) {
+	if repo.skip_file_name(diff.File) {
 		ret = true
 	} else {
 		data, err := os.ReadFile(fpath)

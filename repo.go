@@ -149,7 +149,7 @@ func (repo *Repo) check_path_vendored(path string) bool {
 	return false
 }
 
-func (repo *Repo) skip_file_name(repo_file string, fpath string) bool {
+func (repo *Repo) skip_file_name(repo_file string) bool {
 	if config.Ignore.Vendor && repo.check_path_vendored(repo_file) {
 		log(Info, repo, fmt.Sprintf("Skipping vendored file %s", repo_file))
 		return true
@@ -207,7 +207,7 @@ func (repo *Repo) repo_count() map[string]*LineBytePair {
 
 		fpath := path.Join(repo.Path, repo_file)
 
-		if repo.skip_file_name(repo_file, fpath) {
+		if repo.skip_file_name(repo_file) {
 			continue
 		}
 
