@@ -8,15 +8,15 @@ import (
 	"github.com/go-enry/go-enry/v2"
 )
 
-type LineBytePair struct {
+type IntIntPair struct {
 	lines int
 	bytes int
 }
 
 type Diff struct {
 	File    string
-	Added   LineBytePair
-	Removed LineBytePair
+	Added   IntIntPair
+	Removed IntIntPair
 }
 
 func (diff Diff) should_skip(repo *Repo) bool {

@@ -198,8 +198,8 @@ func (repo *Repo) skip_file_data(repo_file string, data []byte) bool {
 	return false
 }
 
-func (repo *Repo) repo_count() map[string]*LineBytePair {
-	ret := map[string]*LineBytePair{}
+func (repo *Repo) repo_count() map[string]*IntIntPair {
+	ret := map[string]*IntIntPair{}
 
 	flen := float64(len(repo.Files))
 	for i, repo_file := range repo.Files {
@@ -235,7 +235,7 @@ func (repo *Repo) repo_count() map[string]*LineBytePair {
 
 		pair := ret[langs[0]]
 		if pair == nil {
-			pair = &LineBytePair{}
+			pair = &IntIntPair{}
 			ret[langs[0]] = pair
 		}
 
@@ -249,8 +249,8 @@ func (repo *Repo) repo_count() map[string]*LineBytePair {
 	return ret
 }
 
-func (repo *Repo) repo_count_by_commit() map[string]*LineBytePair {
-	ret := map[string]*LineBytePair{}
+func (repo *Repo) repo_count_by_commit() map[string]*IntIntPair {
+	ret := map[string]*IntIntPair{}
 
 	commits := repo.get_matching_commits()
 	clen := float64(len(commits))
@@ -277,7 +277,7 @@ func (repo *Repo) repo_count_by_commit() map[string]*LineBytePair {
 
 			pair := ret[langs[0]]
 			if pair == nil {
-				pair = &LineBytePair{}
+				pair = &IntIntPair{}
 				ret[langs[0]] = pair
 			}
 

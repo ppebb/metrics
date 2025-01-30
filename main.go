@@ -14,9 +14,10 @@ func check(e error) {
 	}
 }
 
-type ConcStringLineBytePairMap struct {
+type ConcData struct {
 	mu sync.Mutex
-	v  map[string]*LineBytePair
+	v  map[string]*IntIntPair
+	l  map[string][]StringIntIntTriplet
 }
 
 func print_help() {
@@ -89,9 +90,10 @@ func main() {
 
 	cursorY = log_get_cursor_pos()
 
-	cumulativeLangs := ConcStringLineBytePairMap{
+	cumulativeLangs := ConcData{
 		mu: sync.Mutex{},
-		v:  map[string]*LineBytePair{},
+		v:  map[string]*IntIntPair{},
+		l:  map[string][]StringIntIntTriplet{},
 	}
 
 	var cancelChannel chan bool
@@ -139,7 +141,7 @@ func main() {
 					continue
 				}
 
-				var counts map[string]*LineBytePair
+				var counts map[string]*IntIntPair
 				if config.Indepth {
 					counts = repo.repo_count_by_commit()
 				} else {
@@ -149,11 +151,21 @@ func main() {
 				cumulativeLangs.mu.Lock()
 				for k, v := range counts {
 					if cumulativeLangs.v[k] == nil {
-						cumulativeLangs.v[k] = &LineBytePair{}
+						cumulativeLangs.v[k] = &IntIntPair{}
 					}
 
 					cumulativeLangs.v[k].lines += v.lines
 					cumulativeLangs.v[k].bytes += v.bytes
+
+					if cumulativeLangs.l[k] == nil {
+						cumulativeLangs.l[k] = []StringIntIntTriplet{}
+					}
+
+					cumulativeLangs.l[k] = append(cumulativeLangs.l[k], StringIntIntTriplet{
+						lang:  repo.Identifier,
+						lines: v.lines,
+						bytes: v.bytes,
+					})
 				}
 				cumulativeLangs.mu.Unlock()
 			}
@@ -183,4 +195,22 @@ func main() {
 	}
 
 	create_svg(cumulativeLangs.v)
+
+	for k, v := range cumulativeLangs.l {
+		totals := cumulativeLangs.v[k]
+		lines := 0
+		bytes := 0
+
+		if totals != nil {
+			lines = totals.lines
+			bytes = totals.bytes
+		}
+		msg := fmt.Sprintf("Language %s: %d lines, %d bytes\n", k, lines, bytes)
+
+		for _, triplet := range v {
+			msg += fmt.Sprintf("ID: %s, Lines: %d, Bytes: %d\n", triplet.lang, triplet.lines, triplet.bytes)
+		}
+
+		log(Info, nil, msg)
+	}
 }

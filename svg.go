@@ -14,7 +14,7 @@ import (
 	"github.com/go-enry/go-enry/v2"
 )
 
-type LangLineByteTriplet struct {
+type StringIntIntTriplet struct {
 	lang  string
 	lines int
 	bytes int
@@ -67,7 +67,7 @@ func fmt_bytes(n int, base int) string {
 	return fmt.Sprintf("%s %s", fmt_double(scaled), prefix[j])
 }
 
-func fmt_count(lt LangLineByteTriplet) string {
+func fmt_count(lt StringIntIntTriplet) string {
 	switch config.Style.Count {
 	case "lines":
 		return fmt.Sprintf("%d lines", lt.lines)
@@ -95,7 +95,7 @@ func indent(s string, by int) string {
 	return builder.String()
 }
 
-func create_svg(langs map[string]*LineBytePair) {
+func create_svg(langs map[string]*IntIntPair) {
 	svgTmplFuncMap = template.FuncMap{
 		"indent": indent,
 	}
@@ -109,7 +109,7 @@ func create_svg(langs map[string]*LineBytePair) {
 		},
 	}
 
-	langsSorted := []LangLineByteTriplet{}
+	langsSorted := []StringIntIntTriplet{}
 
 	for k, v := range langs {
 		if k == "Unknown" || k == "Text" || k == "Markdown" || slices.Contains(config.Ignore.Langs, k) {
@@ -117,12 +117,12 @@ func create_svg(langs map[string]*LineBytePair) {
 			continue
 		}
 
-		lt := LangLineByteTriplet{
+		lt := StringIntIntTriplet{
 			lang:  k,
 			lines: v.lines,
 			bytes: v.bytes,
 		}
-		pos := bin_search(langsSorted, lt, func(lp1 LangLineByteTriplet, lp2 LangLineByteTriplet) int {
+		pos := bin_search(langsSorted, lt, func(lp1 StringIntIntTriplet, lp2 StringIntIntTriplet) int {
 			return cmp.Compare(lp1.lines, lp2.lines)
 		})
 
@@ -319,7 +319,7 @@ type CompactEntryData struct {
 	Color      string
 }
 
-func create_compact(totalLines float64, langsSorted []LangLineByteTriplet, outputFile *os.File) {
+func create_compact(totalLines float64, langsSorted []StringIntIntTriplet, outputFile *os.File) {
 	const MASK = `<mask id="rect-mask">
 	<rect x="%d" y="0" width="%d" height="8" fill="white" rx="5" />
 </mask>` + "\n"
@@ -410,7 +410,7 @@ type VerticalEntryData struct {
 	Color     string
 }
 
-func create_vertical(totalLines float64, langsSorted []LangLineByteTriplet, outputFile *os.File) {
+func create_vertical(totalLines float64, langsSorted []StringIntIntTriplet, outputFile *os.File) {
 	const SVGENTRY = `<g transform="translate({{ .XOffset }}, {{ .YOffset }})">
 	<g class="stagger" style="animation-delay: {{ .Delay }}ms">
 		<text data-testid="lang-name" x="2" y="15" class="lang-name">{{ .LangName }} <tspan class="lang-count">({{ .CountStr }})</tspan></text>
