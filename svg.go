@@ -14,9 +14,10 @@ import (
 	"github.com/go-enry/go-enry/v2"
 )
 
-type langLinePair struct {
+type LangLineByteTriplet struct {
 	lang  string
 	lines int
+	bytes int
 }
 
 var svgTmplFuncMap template.FuncMap
@@ -66,6 +67,17 @@ func fmt_bytes(n int, base int) string {
 	return fmt.Sprintf("%s %s", fmt_double(scaled), prefix[j])
 }
 
+func fmt_count(lt LangLineByteTriplet) string {
+	switch config.Style.Count {
+	case "lines":
+		return fmt.Sprintf("%d lines", lt.lines)
+	case "bytes":
+		return fmt.Sprintf("%sB", fmt_bytes(lt.bytes, config.Style.BytesBase))
+	default:
+		panic("Unknown config.style.count")
+	}
+}
+
 func indent(s string, by int) string {
 	if len(s) == 0 {
 		return ""
@@ -83,7 +95,7 @@ func indent(s string, by int) string {
 	return builder.String()
 }
 
-func create_svg(langs map[string]int) {
+func create_svg(langs map[string]*LineBytePair) {
 	svgTmplFuncMap = template.FuncMap{
 		"indent": indent,
 	}
@@ -97,7 +109,7 @@ func create_svg(langs map[string]int) {
 		},
 	}
 
-	langsSorted := []langLinePair{}
+	langsSorted := []LangLineByteTriplet{}
 
 	for k, v := range langs {
 		if k == "Unknown" || k == "Text" || k == "Markdown" || slices.Contains(config.Ignore.Langs, k) {
@@ -105,13 +117,17 @@ func create_svg(langs map[string]int) {
 			continue
 		}
 
-		lp := langLinePair{k, v}
-		pos := bin_search(langsSorted, lp, func(lp1 langLinePair, lp2 langLinePair) int {
+		lt := LangLineByteTriplet{
+			lang:  k,
+			lines: v.lines,
+			bytes: v.bytes,
+		}
+		pos := bin_search(langsSorted, lt, func(lp1 LangLineByteTriplet, lp2 LangLineByteTriplet) int {
 			return cmp.Compare(lp1.lines, lp2.lines)
 		})
 
 		if pos < 0 {
-			langsSorted = slices.Insert(langsSorted, ^pos, lp)
+			langsSorted = slices.Insert(langsSorted, ^pos, lt)
 		}
 	}
 
@@ -308,7 +324,7 @@ type CompactEntryData struct {
 	Color      string
 }
 
-func create_compact(totalLines float64, langsSorted []langLinePair, outputFile *os.File) {
+func create_compact(totalLines float64, langsSorted []LangLineByteTriplet, outputFile *os.File) {
 	const MASK = `<mask id="rect-mask">
 	<rect x="%d" y="0" width="%d" height="8" fill="white" rx="5" />
 </mask>` + "\n"
@@ -343,20 +359,13 @@ func create_compact(totalLines float64, langsSorted []langLinePair, outputFile *
 	rectXInitial := 25
 	rectX := rectXInitial
 
-	for i, lp := range langsSorted {
-		perc := float64(lp.lines) / totalLines
+	for i, lt := range langsSorted {
+		perc := float64(lt.lines) / totalLines
 		percStr := fmt_double(perc * 100)
 		percStrLen := len(percStr)
 
 		if percStr[percStrLen-1] == '.' {
 			percStr = percStr[:percStrLen-1]
-		}
-
-		countStr := ""
-		if config.Style.Count == "lines" {
-			countStr = fmt.Sprintf("%s lines", fmt_int(lp.lines))
-		} else {
-			countStr = fmt.Sprintf("%sB", fmt_bytes(lp.lines, config.Style.BytesBase))
 		}
 
 		rectW := int(math.Round(perc * float64(totalRectW)))
@@ -367,17 +376,17 @@ func create_compact(totalLines float64, langsSorted []langLinePair, outputFile *
 		}
 
 		entries[i] = CompactEntryData{
-			LangName:   lp.lang,
+			LangName:   lt.lang,
 			TotalWidth: width,
 			XOffset:    i % 2 * ((width / 2) - 12),
 			YOffset:    i / 2 * 20,
-			CountStr:   countStr,
+			CountStr:   fmt_count(lt),
 			PercStr:    percStr,
 			Delay:      450 + i*150,
 			FillDelay:  750 + i*150,
 			RectX:      rectX,
 			RectW:      rectW,
-			Color:      enry.GetColor(lp.lang),
+			Color:      enry.GetColor(lt.lang),
 		}
 
 		rectX += rectW
@@ -406,10 +415,10 @@ type VerticalEntryData struct {
 	Color     string
 }
 
-func create_vertical(totalLines float64, langsSorted []langLinePair, outputFile *os.File) {
+func create_vertical(totalLines float64, langsSorted []LangLineByteTriplet, outputFile *os.File) {
 	const SVGENTRY = `<g transform="translate({{ .XOffset }}, {{ .YOffset }})">
 	<g class="stagger" style="animation-delay: {{ .Delay }}ms">
-		<text data-testid="lang-name" x="2" y="15" class="lang-name">{{ .LangName }} {{ .CountStr }}</text>
+		<text data-testid="lang-name" x="2" y="15" class="lang-name">{{ .LangName }} ({{.CountStr}})</text>
 		<text x="215" y="34" class="lang-name">{{ .PercStr }}%</text>
 		<svg width="205" x="0" y="25">
 			<rect class="rectbg" rx="5" ry="5" x="0" y="0" width="205" height="8"></rect>
@@ -427,8 +436,8 @@ func create_vertical(totalLines float64, langsSorted []langLinePair, outputFile 
 	count := len(langsSorted)
 	entries := make([]VerticalEntryData, count)
 
-	for i, lp := range langsSorted {
-		perc := float64(lp.lines) / totalLines
+	for i, lt := range langsSorted {
+		perc := float64(lt.lines) / totalLines
 		percStr := fmt_double(perc * 100)
 		percStrLen := len(percStr)
 
@@ -436,23 +445,16 @@ func create_vertical(totalLines float64, langsSorted []langLinePair, outputFile 
 			percStr = percStr[:percStrLen-1]
 		}
 
-		countStr := ""
-		if config.Style.Count == "lines" {
-			countStr = fmt.Sprintf("(%s lines)", fmt_int(lp.lines))
-		} else {
-			countStr = fmt.Sprintf("(%sB)", fmt_bytes(lp.lines, config.Style.BytesBase))
-		}
-
 		entries[i] = VerticalEntryData{
-			LangName:  lp.lang,
+			LangName:  lt.lang,
 			XOffset:   25,
 			YOffset:   i * 40,
-			CountStr:  countStr,
+			CountStr:  fmt_count(lt),
 			PercStr:   percStr,
 			Delay:     450 + i*150,
 			FillDelay: 750 + i*150,
 			RectW:     max(int(perc*100), 2),
-			Color:     enry.GetColor(lp.lang),
+			Color:     enry.GetColor(lt.lang),
 		}
 	}
 

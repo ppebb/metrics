@@ -68,8 +68,7 @@ func iabs(n int) int {
 	return n
 }
 
-// TODO: Calculate diffs line by line so an actual added and removed can be calculated
-func (commit Commit) get_diffs_bytes(repo *Repo) []Diff {
+func (commit Commit) get_diffs(repo *Repo) []Diff {
 	ret := []Diff{}
 
 	var prev_commit string
@@ -79,88 +78,55 @@ func (commit Commit) get_diffs_bytes(repo *Repo) []Diff {
 		prev_commit = "HEAD^"
 	}
 
-	stdout, _, err := run_git_sync(repo.Path, "diff-tree", "-r", prev_commit, commit.Hash)
+	stdout, _, err := run_git_sync(repo.Path, "diff", "--patch", prev_commit, commit.Hash)
 	check(err)
 
 	diff_lines := strings.Split(stdout, "\n")
 
-	log(Debug, repo, fmt.Sprintf("Calculating diffs for commit %s", commit.Hash))
+	var currentDiff Diff
 
 	for _, line := range diff_lines {
-		split := strings.Fields(line)
-
-		if len(split) != 6 {
+		// Minimum viable line is a +/- followed by any other character
+		if len(line) < 2 {
 			continue
 		}
 
-		hashOld := split[2]
-		hashNew := split[3]
-		mode := split[4]
-		fileName := split[5]
+		if str_starts_with(line, "diff") {
+			start := strings.Index(line, "a/")
+			end := strings.Index(line, "b/")
 
-		log(Debug, repo, fmt.Sprintf("Calculating diff for commit %s file %s", commit.Hash, fileName))
-		var bytes int
+			if start == -1 || end == -1 {
+				log(Warning, repo, fmt.Sprintf("Patch line contained 'diff', but a/ was at %d and b/ was at %d", start, end))
+				continue
+			}
 
-		switch mode {
-		case "M":
-			bytesOld, err := get_bytes_for_file_hash(hashOld, repo)
-			check(err)
+			if len(currentDiff.File) != 0 {
+				ret = append(ret, currentDiff)
+			}
 
-			bytesNew, err := get_bytes_for_file_hash(hashNew, repo)
-			check(err)
+			currentDiff = Diff{
+				File:    line[start+2 : end-1],
+				Added:   LineBytePair{},
+				Removed: LineBytePair{},
+			}
 
-			bytes = bytesNew - bytesOld
-		case "A":
-			bytes, err = get_bytes_for_file_hash(hashNew, repo)
-			check(err)
-		case "D":
-			bytesOld, err := get_bytes_for_file_hash(hashOld, repo)
-			check(err)
+			continue
+		}
 
-			bytes = -bytesOld
+		c0 := line[0]
+		c1 := line[1:]
+
+		switch c0 {
+		case '+':
+			currentDiff.Added.lines++
+			currentDiff.Added.bytes += len([]byte(c1))
+		case '-':
+			currentDiff.Removed.lines++
+			currentDiff.Removed.bytes += len([]byte(c1))
 		default:
-			log(Warning, repo, fmt.Sprintf("Unhandled mode %s in commit %s file %s", mode, commit.Hash, fileName))
 			continue
 		}
-
-		ret = append(ret, Diff{File: fileName, Added: uint(iabs(bytes)), Removed: 0})
 	}
 
-	return ret
-}
-
-func (commit Commit) get_diffs_lines(repo *Repo) []Diff {
-	ret := []Diff{}
-
-	var prev_commit string
-	if commit.Root {
-		prev_commit = "4b825dc642cb6eb9a060e54bf8d69288fbee4904"
-	} else {
-		prev_commit = "HEAD^"
-	}
-
-	stdout, _, err := run_git_sync(repo.Path, "diff", "--numstat", prev_commit, commit.Hash)
-	check(err)
-
-	diff_lines := strings.Split(stdout, "\n")
-
-	for _, line := range diff_lines {
-		split := strings.Fields(line)
-
-		if len(split) != 3 {
-			continue
-		}
-
-		if split[0] == "-" || split[1] == "-" {
-			continue
-		}
-
-		added, err := strconv.ParseUint(split[0], 10, 32)
-		check(err)
-		removed, err := strconv.ParseUint(split[1], 10, 32)
-		check(err)
-		ret = append(ret, Diff{File: split[2], Added: uint(added), Removed: uint(removed)})
-	}
-
-	return ret
+	return append(ret, currentDiff)
 }

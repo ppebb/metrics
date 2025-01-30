@@ -56,8 +56,6 @@ func log_init(isSilent bool) {
 		termWidth = int(ws.Col)
 		termHeight = int(ws.Row)
 		fmt.Print("\x1b[?25l")
-
-		cursorY = log_get_cursor_pos()
 	}
 }
 
@@ -144,7 +142,7 @@ func log_echo(level LogLevel, repo *Repo, message string, echo bool) {
 	fd.fd.WriteString(msg)
 
 	if echo && !silent {
-		fmt.Println(msg)
+		fmt.Print(msg)
 	}
 }
 

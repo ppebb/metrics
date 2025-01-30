@@ -1,16 +1,22 @@
 package main
 
 import (
+	"fmt"
 	"os"
 	"path"
 
 	"github.com/go-enry/go-enry/v2"
 )
 
+type LineBytePair struct {
+	lines int
+	bytes int
+}
+
 type Diff struct {
 	File    string
-	Added   uint
-	Removed uint
+	Added   LineBytePair
+	Removed LineBytePair
 }
 
 func (diff Diff) should_skip(repo *Repo) bool {
@@ -21,6 +27,15 @@ func (diff Diff) should_skip(repo *Repo) bool {
 	ret := false
 
 	fpath := path.Join(repo.Path, diff.File)
+
+	fe := file_exists(fpath)
+	sy := fe && is_symlink(fpath)
+	di := fe && is_directory(fpath)
+	if !fe || sy || di {
+		log(Info, repo, fmt.Sprintf("Skipping path %s, exists: %t, symlink: %t, dir: %t", fpath, fe, sy, di))
+		return true
+	}
+
 	if repo.skip_file_name(diff.File, fpath) {
 		ret = true
 	} else {

@@ -50,3 +50,13 @@ func bin_search[T any](list []T, element T, cmp func(T, T) int) int {
 
 	return ^lo
 }
+
+func str_starts_with(str string, sub string) bool {
+	subLen := len(sub)
+
+	if len(str) < len(sub) {
+		return false
+	}
+
+	return str[:subLen] == sub
+}

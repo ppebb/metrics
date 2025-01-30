@@ -14,9 +14,9 @@ func check(e error) {
 	}
 }
 
-type ConcStringIntMap struct {
+type ConcStringLineBytePairMap struct {
 	mu sync.Mutex
-	v  map[string]int
+	v  map[string]*LineBytePair
 }
 
 func print_help() {
@@ -87,9 +87,11 @@ func main() {
 		return
 	}
 
-	cumulativeLangs := ConcStringIntMap{
+	cursorY = log_get_cursor_pos()
+
+	cumulativeLangs := ConcStringLineBytePairMap{
 		mu: sync.Mutex{},
-		v:  map[string]int{},
+		v:  map[string]*LineBytePair{},
 	}
 
 	var cancelChannel chan bool
@@ -128,16 +130,21 @@ func main() {
 				repo := repo_new(id)
 				lastRepo = &repo
 
-				var counts map[string]int
+				var counts map[string]*LineBytePair
 				if config.Indepth {
-					counts = repo.repo_count_by_commit(config.Style.Count == "lines")
+					counts = repo.repo_count_by_commit()
 				} else {
-					counts = repo.repo_count(config.Style.Count == "lines")
+					counts = repo.repo_count()
 				}
 
 				cumulativeLangs.mu.Lock()
 				for k, v := range counts {
-					cumulativeLangs.v[k] += v
+					if cumulativeLangs.v[k] == nil {
+						cumulativeLangs.v[k] = &LineBytePair{}
+					}
+
+					cumulativeLangs.v[k].lines += v.lines
+					cumulativeLangs.v[k].bytes += v.bytes
 				}
 				cumulativeLangs.mu.Unlock()
 			}

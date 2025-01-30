@@ -150,10 +150,6 @@ func (repo *Repo) check_path_vendored(path string) bool {
 }
 
 func (repo *Repo) skip_file_name(repo_file string, fpath string) bool {
-	if !file_exists(fpath) || is_symlink(fpath) || is_directory(fpath) {
-		return true
-	}
-
 	if config.Ignore.Vendor && repo.check_path_vendored(repo_file) {
 		log(Info, repo, fmt.Sprintf("Skipping vendored file %s", repo_file))
 		return true
@@ -196,11 +192,15 @@ func (repo *Repo) skip_file_data(repo_file string, data []byte) bool {
 	return false
 }
 
-func (repo *Repo) repo_count(lines bool) map[string]int {
-	ret := map[string]int{}
+func (repo *Repo) repo_count() map[string]*LineBytePair {
+	ret := map[string]*LineBytePair{}
 
 	flen := float64(len(repo.Files))
 	for i, repo_file := range repo.Files {
+		if len(repo_file) == 0 {
+			continue
+		}
+
 		msg := fmt.Sprintf("Counting file %s", repo_file)
 		log_progress(repo, msg, float64(i)/flen)
 		log(Info, repo, msg)
@@ -227,11 +227,14 @@ func (repo *Repo) repo_count(lines bool) map[string]int {
 			langs = append(langs, "Unknown")
 		}
 
-		if lines {
-			ret[langs[0]] += bytes.Count(data, []byte{'\n'})
-		} else {
-			ret[langs[0]] += len(data)
+		pair := ret[langs[0]]
+		if pair == nil {
+			pair = &LineBytePair{}
+			ret[langs[0]] = pair
 		}
+
+		pair.lines += bytes.Count(data, []byte{'\n'})
+		pair.bytes += len([]byte(data))
 	}
 
 	log(Info, repo, "Finished")
@@ -240,25 +243,19 @@ func (repo *Repo) repo_count(lines bool) map[string]int {
 	return ret
 }
 
-func (repo *Repo) repo_count_by_commit(lines bool) map[string]int {
-	ret := map[string]int{}
+func (repo *Repo) repo_count_by_commit() map[string]*LineBytePair {
+	ret := map[string]*LineBytePair{}
 
 	commits := repo.get_matching_commits()
 	clen := float64(len(commits))
+
 	for i, commit := range commits {
 		msg := fmt.Sprintf("Checking out commit %s", commit.Hash)
 		log_progress(repo, msg, float64(i)/clen)
 		log(Info, repo, msg)
 		repo.checkout_commit(commit)
 
-		var diffs []Diff
-		if lines {
-			diffs = commit.get_diffs_lines(repo)
-		} else {
-			diffs = commit.get_diffs_bytes(repo)
-		}
-
-		for _, diff := range diffs {
+		for _, diff := range commit.get_diffs(repo) {
 			if diff.should_skip(repo) {
 				continue
 			}
@@ -272,10 +269,18 @@ func (repo *Repo) repo_count_by_commit(lines bool) map[string]int {
 				langs = append(langs, "Unknown")
 			}
 
+			pair := ret[langs[0]]
+			if pair == nil {
+				pair = &LineBytePair{}
+				ret[langs[0]] = pair
+			}
+
 			if config.CountTotal {
-				ret[langs[0]] += int(diff.Added - diff.Removed)
+				pair.lines += diff.Added.lines - diff.Removed.lines
+				pair.bytes += diff.Added.bytes - diff.Removed.bytes
 			} else {
-				ret[langs[0]] += int(diff.Added + diff.Removed)
+				pair.lines += diff.Added.lines + diff.Removed.lines
+				pair.bytes += diff.Added.bytes + diff.Removed.bytes
 			}
 		}
 	}
