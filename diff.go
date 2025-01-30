@@ -33,7 +33,9 @@ func (diff Diff) should_skip(repo *Repo) bool {
 	di := fe && is_directory(fpath)
 	if !fe || sy || di {
 		log(Info, repo, fmt.Sprintf("Skipping path %s, exists: %t, symlink: %t, dir: %t", fpath, fe, sy, di))
-		ret = true
+		// If the file doesn't exist, keep checking because sometimes it shows
+		// up later?? May have to do with renames...
+		return true
 	} else if repo.skip_file_name(diff.File) {
 		ret = true
 	} else {
