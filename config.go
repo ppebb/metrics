@@ -19,6 +19,7 @@ type SVGTheme struct {
 	CardBG     string
 	CardStroke string
 	Header     string
+	SubHeader  string
 	RectBg     string
 	LangName   string
 	Count      string
@@ -35,6 +36,7 @@ type Config struct {
 		Type      string
 		Count     string
 		BytesBase int
+		ShowTotal bool
 	}
 	Token        string
 	ExcludeForks bool

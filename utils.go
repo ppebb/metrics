@@ -2,6 +2,7 @@ package main
 
 import (
 	"os"
+	"slices"
 )
 
 func file_exists(path string) bool {
@@ -59,4 +60,8 @@ func str_starts_with(str string, sub string) bool {
 	}
 
 	return str[:subLen] == sub
+}
+
+func should_skip_lang(lang string) bool {
+	return lang == "Unknown" || lang == "Text" || lang == "Markdown" || slices.Contains(config.Ignore.Langs, lang)
 }

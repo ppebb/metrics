@@ -6,6 +6,7 @@ import (
 	"os"
 	"path"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -17,6 +18,7 @@ type Repo struct {
 	Path            string
 	VendoredFilters []*regexp.Regexp
 	Files           []string
+	UniqueFiles     []string
 	FileLangMap     map[string][]string
 	FileSkipMap     map[string]bool
 	CurrentCommit   Commit
@@ -31,6 +33,7 @@ type Repo struct {
 func repo_initialize(repo *Repo) {
 	repo.Path = repo_path(repo.Identifier)
 
+	repo.UniqueFiles = []string{}
 	repo.FileLangMap = map[string][]string{}
 	repo.FileSkipMap = map[string]bool{}
 	repo.LogID = -1
@@ -40,11 +43,20 @@ func repo_initialize(repo *Repo) {
 	log(Info, repo, fmt.Sprintf("Initialized repository at %s", repo.Path))
 }
 
-func repo_files(repo_path string) []string {
-	stdout, _, err := run_git_sync(repo_path, "ls-files")
+func (repo *Repo) insert_unique_file(file string) {
+	idx := bin_search(repo.UniqueFiles, file, strings.Compare)
+
+	if idx < 0 {
+		log(Debug, repo, fmt.Sprintf("Adding unique file %s", file))
+		repo.UniqueFiles = slices.Insert(repo.UniqueFiles, ^idx, file)
+	}
+}
+
+func (repo *Repo) update_files() {
+	stdout, _, err := run_git_sync(repo.Path, "ls-files")
 	check(err)
 
-	return strings.Split(stdout, "\n")
+	repo.Files = strings.Split(stdout, "\n")
 }
 
 var vendoredRegexp *regexp.Regexp
@@ -125,7 +137,7 @@ func (repo *Repo) repo_pull_or_clone() {
 	}
 
 	repo.VendoredFilters = repo.vendored_filters()
-	repo.Files = repo_files(repo.Path)
+	repo.update_files()
 
 	latestBranch := repo.get_current_branch()
 	repo.CurrentBranch = latestBranch
@@ -134,11 +146,6 @@ func (repo *Repo) repo_pull_or_clone() {
 	latestCommit := repo.get_latest_commit()
 	repo.CurrentCommit = latestCommit
 	repo.LatestCommit = latestCommit
-}
-
-func (repo *Repo) refresh() {
-	// repo.VendoredFilters = repo.vendored_filters()
-	repo.Files = repo_files(repo.Path)
 }
 
 func (repo *Repo) check_path_vendored(path string) bool {
@@ -275,6 +282,10 @@ func (repo *Repo) repo_count_by_commit() map[string]*IntIntPair {
 				langs = append(langs, "Unknown")
 			}
 
+			if !should_skip_lang(langs[0]) {
+				repo.insert_unique_file(diff.File)
+			}
+
 			pair := ret[langs[0]]
 			if pair == nil {
 				pair = &IntIntPair{}
@@ -361,7 +372,7 @@ func (repo *Repo) checkout_branch(branch string) {
 	repo.CurrentBranch = branch
 	repo.CurrentCommit = repo.get_latest_commit()
 
-	repo.refresh()
+	repo.update_files()
 }
 
 func (repo *Repo) checkout_commit(commit Commit) {
@@ -375,5 +386,5 @@ func (repo *Repo) checkout_commit(commit Commit) {
 	repo.CurrentCommit = commit
 	repo.CurrentBranch = ""
 
-	repo.refresh()
+	repo.update_files()
 }

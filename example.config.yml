@@ -7,6 +7,7 @@ style:
   type: "compact"
   count: "lines"
   bytesbase: 1024
+  showtotal: true
 token: "scopeless access token"
 excludeforks: true
 parallel: 8

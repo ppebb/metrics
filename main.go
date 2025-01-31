@@ -18,6 +18,7 @@ type ConcData struct {
 	mu sync.Mutex
 	v  map[string]*IntIntPair
 	l  map[string][]StringIntIntTriplet
+	f  int
 }
 
 func print_help() {
@@ -90,10 +91,11 @@ func main() {
 
 	cursorY = log_get_cursor_pos()
 
-	cumulativeLangs := ConcData{
+	cumulative := ConcData{
 		mu: sync.Mutex{},
 		v:  map[string]*IntIntPair{},
 		l:  map[string][]StringIntIntTriplet{},
+		f:  0,
 	}
 
 	var cancelChannel chan bool
@@ -148,26 +150,29 @@ func main() {
 					counts = repo.repo_count()
 				}
 
-				cumulativeLangs.mu.Lock()
+				cumulative.mu.Lock()
 				for k, v := range counts {
-					if cumulativeLangs.v[k] == nil {
-						cumulativeLangs.v[k] = &IntIntPair{}
+					if cumulative.v[k] == nil {
+						cumulative.v[k] = &IntIntPair{}
 					}
 
-					cumulativeLangs.v[k].lines += v.lines
-					cumulativeLangs.v[k].bytes += v.bytes
+					cumulative.v[k].lines += v.lines
+					cumulative.v[k].bytes += v.bytes
 
-					if cumulativeLangs.l[k] == nil {
-						cumulativeLangs.l[k] = []StringIntIntTriplet{}
+					if cumulative.l[k] == nil {
+						cumulative.l[k] = []StringIntIntTriplet{}
 					}
 
-					cumulativeLangs.l[k] = append(cumulativeLangs.l[k], StringIntIntTriplet{
+					cumulative.l[k] = append(cumulative.l[k], StringIntIntTriplet{
 						lang:  repo.Identifier,
 						lines: v.lines,
 						bytes: v.bytes,
 					})
+
 				}
-				cumulativeLangs.mu.Unlock()
+
+				cumulative.f += len(repo.UniqueFiles)
+				cumulative.mu.Unlock()
 			}
 		}
 	}
@@ -194,10 +199,10 @@ func main() {
 		return
 	}
 
-	create_svg(cumulativeLangs.v)
+	create_svg(cumulative.v, cumulative.f)
 
-	for k, v := range cumulativeLangs.l {
-		totals := cumulativeLangs.v[k]
+	for k, v := range cumulative.l {
+		totals := cumulative.v[k]
 		lines := 0
 		bytes := 0
 
