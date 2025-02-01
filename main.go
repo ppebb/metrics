@@ -42,6 +42,12 @@ func main() {
 	var silent = false
 
 	argsLen := len(os.Args)
+
+	if argsLen <= 1 {
+		fmt.Println("No arguments provided! --config is required to continue.")
+		print_help()
+	}
+
 	for i := 1; i < argsLen; i++ {
 		arg := os.Args[i]
 		switch arg {
