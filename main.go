@@ -202,7 +202,7 @@ func main() {
 	log_reset_term_if_needed()
 
 	if closed {
-		return
+		os.Exit(1)
 	}
 
 	create_svg(cumulative.v, cumulative.f)
