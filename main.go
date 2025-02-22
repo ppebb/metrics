@@ -92,6 +92,7 @@ func main() {
 			fmt.Printf("    %s\n", v)
 		}
 
+		log_reset_cursor()
 		return
 	}
 

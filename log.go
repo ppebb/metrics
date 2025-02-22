@@ -93,10 +93,16 @@ func log_get_cursor_pos() int {
 	}
 }
 
+func log_reset_cursor() {
+	if isTerminal {
+		fmt.Print("\x1b[?25h")
+	}
+}
+
 func log_reset_term_if_needed() {
 	if isTerminal {
 		fmt.Printf("\x1b[%d;%dH\n", min(termHeight, cursorY), termWidth)
-		fmt.Print("\x1b[?25h")
+		log_reset_cursor()
 	}
 }
 
