@@ -5,6 +5,8 @@ import (
 	"os"
 	"regexp"
 	"slices"
+	"sort"
+	"strings"
 
 	"gopkg.in/yaml.v3"
 )
@@ -166,4 +168,8 @@ func config_init(path string) {
 	if len(reposToCheck) == 0 {
 		panic("There are no repositorites to check! Either all have been filtered or none were provided. See config.users, config.orgs, and config.repositorites")
 	}
+
+	sort.Slice(reposToCheck, func(i, j int) bool {
+		return strings.ToLower(reposToCheck[i]) < strings.ToLower(reposToCheck[j])
+	})
 }
