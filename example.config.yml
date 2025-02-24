@@ -8,7 +8,7 @@ style:
   count: "lines"
   bytesbase: 1024
   showtotal: true
-token: "scopeless access token"
+token: "repo scoped access token"
 excludeforks: true
 parallel: 8
 users:
