@@ -111,7 +111,7 @@ func repo_path(repo_id string) string {
 		)
 	}
 
-	return path.Join(config.Location, splits[1])
+	return path.Join(config.Location, fmt.Sprintf("%s-%s", splits[0], splits[1]))
 }
 
 func (repo *Repo) repo_pull_or_clone() {
@@ -119,7 +119,7 @@ func (repo *Repo) repo_pull_or_clone() {
 		msg := "Cloning repository"
 		log_progress(repo, msg, 0)
 		log(Info, repo, msg)
-		_, _, err := run_git_sync(config.Location, "clone", "https://github.com/"+repo.Identifier+".git")
+		_, _, err := run_git_sync("", "clone", "https://github.com/"+repo.Identifier+".git", repo.Path)
 		check(err)
 	} else {
 		msg := fmt.Sprintf("Pulling repository at %s", repo.Path)
