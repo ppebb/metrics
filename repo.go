@@ -115,6 +115,8 @@ func repo_path(repo_id string) string {
 }
 
 func (repo *Repo) repo_pull_or_clone() {
+	var latestBranch string
+
 	if !file_exists(repo.Path) {
 		msg := "Cloning repository"
 		log_progress(repo, msg, 0)
@@ -125,7 +127,7 @@ func (repo *Repo) repo_pull_or_clone() {
 		msg := fmt.Sprintf("Pulling repository at %s", repo.Path)
 		log_progress(repo, msg, 0)
 		log(Info, repo, msg)
-		_, _, err := run_git_sync(repo.Path, "pull")
+		_, _, err := run_git_sync(repo.Path, "fetch", "origin")
 
 		// TODO: Better handling of empty repositories
 		if err != nil && strings.Contains(err.Error(), "no such ref was fetched") {
@@ -134,12 +136,19 @@ func (repo *Repo) repo_pull_or_clone() {
 		} else {
 			check(err)
 		}
+
+		latestBranch = repo.get_current_branch()
+		_, _, err = run_git_sync(repo.Path, "reset", "--hard", "origin/"+latestBranch)
+		check(err)
 	}
 
 	repo.VendoredFilters = repo.vendored_filters()
 	repo.update_files()
 
-	latestBranch := repo.get_current_branch()
+	if len(latestBranch) == 0 {
+		latestBranch = repo.get_current_branch()
+	}
+
 	repo.CurrentBranch = latestBranch
 	repo.LatestBranch = latestBranch
 
