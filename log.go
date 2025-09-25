@@ -198,7 +198,7 @@ func log_progress(repo *Repo, message string, completion float64) {
 
 	spaceLen := termWidth - len(front) - len(prog) - len(perc)
 	if spaceLen <= 0 {
-		front = fmt.Sprintf("%s ... ", front[:(len(front)+spaceLen)-5])
+		front = fmt.Sprintf("%s... ", front[:(len(front)+spaceLen)-4])
 		spaceLen = 0
 	}
 	space := strings.Repeat(" ", spaceLen)
