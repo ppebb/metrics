@@ -48,6 +48,7 @@ type Config struct {
 	Repositories []string
 	Authors      []string
 	Filters      []string
+	Commits      []string
 	Ignore       struct {
 		Vendor        bool
 		Dotfiles      bool

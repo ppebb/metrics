@@ -272,6 +272,11 @@ func (repo *Repo) repo_count_by_commit() map[string]*IntIntPair {
 	clen := float64(len(commits))
 
 	for i, commit := range commits {
+		if commit.skip_commit() {
+			log(LOG_INFO, repo, fmt.Sprintf("Skipping commit %s", commit.Hash))
+			continue
+		}
+
 		msg := fmt.Sprintf("Checking out commit %s", commit.Hash)
 		log_progress(repo, msg, float64(i)/clen)
 		log(Info, repo, msg)

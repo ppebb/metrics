@@ -64,6 +64,8 @@ commits to consider (see the `--author` option of `git-log`).
 
 filters (`[]string`): Regex patterns used to match repositories to exclude.
 
+commits (`[]string`): List of 6-character commit hashes to exclude.
+
 ignore.vendor (`boolean`): Whether to ignore files identified by go-enry as vendored.
 
 ignore.dotfiles (`boolean`): Whether to ignore files identified by go-enry as dotfiles.

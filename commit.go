@@ -142,3 +142,13 @@ func (commit Commit) get_diffs(repo *Repo) []Diff {
 
 	return append(ret, currentDiff)
 }
+
+func (commit Commit) skip_commit() bool {
+	for _, filtered_hash := range config.Commits {
+		if strings.HasPrefix(commit.Hash, filtered_hash) {
+			return true
+		}
+	}
+
+	return false
+}
