@@ -116,10 +116,10 @@ func main() {
 
 		defer func() {
 			if r := recover(); r != nil {
-				log(Critical, lastRepo, fmt.Sprintf("Panic caught in WorkerID %d: %s, exiting...\n%s", workerID, r, debug.Stack()))
+				log(LOG_CRITICAL, lastRepo, fmt.Sprintf("Panic caught in WorkerID %d: %s, exiting...\n%s", workerID, r, debug.Stack()))
 
 				if lastRepo != nil {
-					log(Info, lastRepo, fmt.Sprintf("Reverting to branch %s", lastRepo.LatestBranch))
+					log(LOG_INFO, lastRepo, fmt.Sprintf("Reverting to branch %s", lastRepo.LatestBranch))
 					lastRepo.checkout_branch(lastRepo.LatestBranch)
 				}
 
@@ -138,7 +138,7 @@ func main() {
 					break REPOSLOOP
 				}
 			default:
-				log(Info, nil, fmt.Sprintf("WorkerID %d: preparing to initialize repo %s", workerID, id))
+				log(LOG_INFO, nil, fmt.Sprintf("WorkerID %d: preparing to initialize repo %s", workerID, id))
 				repo := Repo{
 					Identifier: id,
 				}
@@ -223,6 +223,6 @@ func main() {
 			msg += fmt.Sprintf("ID: %s, Lines: %d, Bytes: %d\n", triplet.lang, triplet.lines, triplet.bytes)
 		}
 
-		log(Info, nil, msg)
+		log(LOG_INFO, nil, msg)
 	}
 }

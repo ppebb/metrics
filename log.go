@@ -113,21 +113,21 @@ func log_close() {
 type LogLevel uint8
 
 const (
-	Critical LogLevel = iota
-	Warning
-	Debug
-	Info
+	LOG_CRITICAL LogLevel = iota
+	LOG_WARNING
+	LOG_DEBUG
+	LOG_INFO
 )
 
 func (e LogLevel) String() string {
 	switch e {
-	case Critical:
+	case LOG_CRITICAL:
 		return "Critical"
-	case Warning:
+	case LOG_WARNING:
 		return "Warning"
-	case Debug:
+	case LOG_DEBUG:
 		return "Debug"
-	case Info:
+	case LOG_INFO:
 		return "Info"
 	default:
 		return fmt.Sprintf("%d", int(e))

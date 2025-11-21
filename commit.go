@@ -96,7 +96,7 @@ func (commit Commit) get_diffs(repo *Repo) []Diff {
 			end := strings.Index(line, "b/")
 
 			if start == -1 || end == -1 {
-				log(Warning, repo, fmt.Sprintf("Patch line contained 'diff', but a/ was at %d and b/ was at %d", start, end))
+				log(LOG_WARNING, repo, fmt.Sprintf("Patch line contained 'diff', but a/ was at %d and b/ was at %d", start, end))
 				continue
 			}
 
@@ -118,7 +118,7 @@ func (commit Commit) get_diffs(repo *Repo) []Diff {
 			end := len(line)
 
 			if start == -1 || end == -1 {
-				log(Warning, repo, fmt.Sprintf("Patch line contained 'diff', but a/ was at %d and b/ was at %d", start, end))
+				log(LOG_WARNING, repo, fmt.Sprintf("Patch line contained 'diff', but a/ was at %d and b/ was at %d", start, end))
 				continue
 			}
 

@@ -40,14 +40,14 @@ func repo_initialize(repo *Repo) {
 
 	repo.repo_pull_or_clone()
 
-	log(Info, repo, fmt.Sprintf("Initialized repository at %s", repo.Path))
+	log(LOG_INFO, repo, fmt.Sprintf("Initialized repository at %s", repo.Path))
 }
 
 func (repo *Repo) insert_unique_file(file string) {
 	idx := bin_search(repo.UniqueFiles, file, strings.Compare)
 
 	if idx < 0 {
-		log(Debug, repo, fmt.Sprintf("Adding unique file %s", file))
+		log(LOG_DEBUG, repo, fmt.Sprintf("Adding unique file %s", file))
 		repo.UniqueFiles = slices.Insert(repo.UniqueFiles, ^idx, file)
 	}
 }
@@ -75,7 +75,7 @@ func (repo *Repo) vendored_filters() []*regexp.Regexp {
 	data, err := os.ReadFile(gitattr_path)
 
 	if err != nil {
-		log(Warning, repo, fmt.Sprintf(
+		log(LOG_WARNING, repo, fmt.Sprintf(
 			"Unable to read .gitattributes for %s due to error %s, results may be innacurate!",
 			repo.Path,
 			err.Error(),
@@ -120,13 +120,13 @@ func (repo *Repo) repo_pull_or_clone() {
 	if !file_exists(repo.Path) {
 		msg := "Cloning repository"
 		log_progress(repo, msg, 0)
-		log(Info, repo, msg)
+		log(LOG_INFO, repo, msg)
 		_, _, err := run_git_sync("", "clone", "https://github.com/"+repo.Identifier+".git", repo.Path)
 		check(err)
 	} else {
 		msg := fmt.Sprintf("Pulling repository at %s", repo.Path)
 		log_progress(repo, msg, 0)
-		log(Info, repo, msg)
+		log(LOG_INFO, repo, msg)
 		_, _, err := run_git_sync(repo.Path, "fetch", "origin")
 
 		// TODO: Better handling of empty repositories
@@ -173,27 +173,27 @@ func (repo *Repo) check_path_vendored(path string) bool {
 
 func (repo *Repo) skip_file_name(repo_file string) bool {
 	if config.Ignore.Vendor && repo.check_path_vendored(repo_file) {
-		log(Info, repo, fmt.Sprintf("Skipping vendored file %s", repo_file))
+		log(LOG_INFO, repo, fmt.Sprintf("Skipping vendored file %s", repo_file))
 		return true
 	}
 
 	if config.Ignore.Dotfiles && enry.IsDotFile(repo_file) {
-		log(Info, repo, fmt.Sprintf("Skipping dotfile file %s", repo_file))
+		log(LOG_INFO, repo, fmt.Sprintf("Skipping dotfile file %s", repo_file))
 		return true
 	}
 
 	if config.Ignore.Configuration && enry.IsConfiguration(repo_file) {
-		log(Info, repo, fmt.Sprintf("Skipping config file %s", repo_file))
+		log(LOG_INFO, repo, fmt.Sprintf("Skipping config file %s", repo_file))
 		return true
 	}
 
 	if config.Ignore.Image && enry.IsImage(repo_file) {
-		log(Info, repo, fmt.Sprintf("Skipping image file %s", repo_file))
+		log(LOG_INFO, repo, fmt.Sprintf("Skipping image file %s", repo_file))
 		return true
 	}
 
 	if config.Ignore.Test && enry.IsTest(repo_file) {
-		log(Info, repo, fmt.Sprintf("Skipping test file %s", repo_file))
+		log(LOG_INFO, repo, fmt.Sprintf("Skipping test file %s", repo_file))
 		return true
 	}
 
@@ -202,12 +202,12 @@ func (repo *Repo) skip_file_name(repo_file string) bool {
 
 func (repo *Repo) skip_file_data(repo_file string, data []byte) bool {
 	if config.Ignore.Binary && enry.IsBinary(data) {
-		log(Info, repo, fmt.Sprintf("Skipping binary file %s", repo_file))
+		log(LOG_INFO, repo, fmt.Sprintf("Skipping binary file %s", repo_file))
 		return true
 	}
 
 	if config.Ignore.Generated && enry.IsGenerated(repo_file, data) {
-		log(Info, repo, fmt.Sprintf("Skipping generated file %s", repo_file))
+		log(LOG_INFO, repo, fmt.Sprintf("Skipping generated file %s", repo_file))
 		return true
 	}
 
@@ -225,7 +225,7 @@ func (repo *Repo) repo_count() map[string]*IntIntPair {
 
 		msg := fmt.Sprintf("Counting file %s", repo_file)
 		log_progress(repo, msg, float64(i)/flen)
-		log(Info, repo, msg)
+		log(LOG_INFO, repo, msg)
 
 		fpath := path.Join(repo.Path, repo_file)
 
@@ -242,7 +242,7 @@ func (repo *Repo) repo_count() map[string]*IntIntPair {
 
 		langs := enry.GetLanguages(repo_file, data)
 		if len(langs) > 1 {
-			log(Warning, repo, fmt.Sprintf("Potentially multiple languages found for file %s: %s", fpath, langs))
+			log(LOG_WARNING, repo, fmt.Sprintf("Potentially multiple languages found for file %s: %s", fpath, langs))
 		}
 
 		if len(langs) == 0 {
@@ -259,7 +259,7 @@ func (repo *Repo) repo_count() map[string]*IntIntPair {
 		pair.bytes += len([]byte(data))
 	}
 
-	log(Info, repo, "Finished")
+	log(LOG_INFO, repo, "Finished")
 	log_progress(repo, "Finished", 1)
 
 	return ret
@@ -279,7 +279,7 @@ func (repo *Repo) repo_count_by_commit() map[string]*IntIntPair {
 
 		msg := fmt.Sprintf("Checking out commit %s", commit.Hash)
 		log_progress(repo, msg, float64(i)/clen)
-		log(Info, repo, msg)
+		log(LOG_INFO, repo, msg)
 		repo.checkout_commit(commit)
 
 		for _, diff := range commit.get_diffs(repo) {
@@ -289,7 +289,7 @@ func (repo *Repo) repo_count_by_commit() map[string]*IntIntPair {
 
 			langs := diff.get_languages(repo)
 			if len(langs) > 1 {
-				log(Warning, repo, fmt.Sprintf("Potentially multiple languages found for file %s: %s", diff.File, langs))
+				log(LOG_WARNING, repo, fmt.Sprintf("Potentially multiple languages found for file %s: %s", diff.File, langs))
 			}
 
 			if len(langs) == 0 {
@@ -318,10 +318,10 @@ func (repo *Repo) repo_count_by_commit() map[string]*IntIntPair {
 
 	msg := fmt.Sprintf("Checking out branch %s", repo.LatestBranch)
 	log_progress(repo, msg, 0.99)
-	log(Info, repo, msg)
+	log(LOG_INFO, repo, msg)
 	repo.checkout_branch(repo.LatestBranch)
 
-	log(Info, repo, "Finished")
+	log(LOG_INFO, repo, "Finished")
 	log_progress(repo, "Finished", 1)
 
 	return ret
