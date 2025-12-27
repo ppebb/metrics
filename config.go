@@ -29,11 +29,12 @@ type SVGTheme struct {
 }
 
 type Config struct {
-	Location   string
-	Indepth    bool
-	CountTotal bool
-	LangsCount int
-	Style      struct {
+	Location    string
+	Indepth     bool
+	CountTotal  bool
+	CountSpaces bool
+	LangsCount  int
+	Style       struct {
 		Theme     string
 		Type      string
 		Count     string

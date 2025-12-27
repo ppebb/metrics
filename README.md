@@ -31,6 +31,8 @@ each file as they are in the latest commit.
 counttotal (`boolean`): When true, diffs are calculated as added - removed.
 When false, diffs are calculated as added + removed.
 
+countspaces (`boolean`): When true, blank lines are included in the count.
+
 langscount (`integer`): How many languages to display.
 
 style.theme (`string`): Path to a theme.yml file (see `./themes`).

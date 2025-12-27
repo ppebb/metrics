@@ -1,6 +1,7 @@
 location: "./repos"
 indepth: true
 counttotal: false
+countspaces: false
 langscount: 5
 style:
   theme: "./themes/tokyonight.yml"

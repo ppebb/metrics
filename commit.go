@@ -85,9 +85,15 @@ func (commit Commit) get_diffs(repo *Repo) []Diff {
 
 	var currentDiff Diff
 
+	minLen := 2
+
+	if config.CountSpaces {
+		minLen = 1
+	}
+
 	for _, line := range diff_lines {
 		// Minimum viable line is a +/- followed by any other character
-		if len(line) < 2 {
+		if len(line) < minLen {
 			continue
 		}
 
