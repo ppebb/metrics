@@ -30,30 +30,30 @@ type Repo struct {
 	LogID int
 }
 
-func repo_initialize(repo *Repo) {
-	repo.Path = repo_path(repo.Identifier)
+func initRepo(repo *Repo) {
+	repo.Path = repoPath(repo.Identifier)
 
 	repo.UniqueFiles = []string{}
 	repo.FileLangMap = map[string][]string{}
 	repo.FileSkipMap = map[string]bool{}
 	repo.LogID = -1
 
-	repo.repo_pull_or_clone()
+	repo.pullOrClone()
 
-	log(LOG_INFO, repo, fmt.Sprintf("Initialized repository at %s", repo.Path))
+	log(Info, repo, fmt.Sprintf("Initialized repository at %s", repo.Path))
 }
 
-func (repo *Repo) insert_unique_file(file string) {
-	idx := bin_search(repo.UniqueFiles, file, strings.Compare)
+func (repo *Repo) insertUniqueFile(file string) {
+	idx, found := slices.BinarySearch(repo.UniqueFiles, file)
 
-	if idx < 0 {
-		log(LOG_DEBUG, repo, fmt.Sprintf("Adding unique file %s", file))
-		repo.UniqueFiles = slices.Insert(repo.UniqueFiles, ^idx, file)
+	if !found {
+		log(Debug, repo, fmt.Sprintf("Adding unique file %s", file))
+		repo.UniqueFiles = slices.Insert(repo.UniqueFiles, idx, file)
 	}
 }
 
-func (repo *Repo) update_files() {
-	stdout, _, err := run_git_sync(repo.Path, "ls-files")
+func (repo *Repo) updateFiles() {
+	stdout, _, err := runGitSync(repo.Path, "ls-files")
 	check(err)
 
 	repo.Files = strings.Split(stdout, "\n")
@@ -61,21 +61,21 @@ func (repo *Repo) update_files() {
 
 var vendoredRegexp *regexp.Regexp
 
-func (repo *Repo) vendored_filters() []*regexp.Regexp {
+func (repo *Repo) vendoredFilters() []*regexp.Regexp {
 	if vendoredRegexp == nil {
 		vendoredRegexp = regexp.MustCompile(" linguist-vendored")
 	}
 
-	gitattr_path := path.Join(repo.Path, ".gitattributes")
+	gitAttrPath := path.Join(repo.Path, ".gitattributes")
 
-	if !file_exists(gitattr_path) {
+	if !fileExists(gitAttrPath) {
 		return []*regexp.Regexp{}
 	}
 
-	data, err := os.ReadFile(gitattr_path)
+	data, err := os.ReadFile(gitAttrPath)
 
 	if err != nil {
-		log(LOG_WARNING, repo, fmt.Sprintf(
+		log(Warning, repo, fmt.Sprintf(
 			"Unable to read .gitattributes for %s due to error %s, results may be innacurate!",
 			repo.Path,
 			err.Error(),
@@ -86,7 +86,7 @@ func (repo *Repo) vendored_filters() []*regexp.Regexp {
 	filters := []*regexp.Regexp{}
 
 	lines := strings.Split(string(data), "\n")
-	for i := 0; i < len(lines); i++ {
+	for i := range lines {
 		line := lines[i]
 		if vendoredRegexp.MatchString(line) {
 			split := strings.Fields(line)[0]
@@ -99,14 +99,14 @@ func (repo *Repo) vendored_filters() []*regexp.Regexp {
 	return filters
 }
 
-func repo_path(repo_id string) string {
-	splits := strings.Split(repo_id, "/")
+func repoPath(repoID string) string {
+	splits := strings.Split(repoID, "/")
 
 	if len(splits) != 2 {
 		panic(
 			fmt.Sprintf(
 				"Improper repository provided: %s. Ensure repositories follow the format author/repo",
-				repo_id,
+				repoID,
 			),
 		)
 	}
@@ -114,50 +114,50 @@ func repo_path(repo_id string) string {
 	return path.Join(config.Location, fmt.Sprintf("%s-%s", splits[0], splits[1]))
 }
 
-func (repo *Repo) repo_pull_or_clone() {
+func (repo *Repo) pullOrClone() {
 	var latestBranch string
 
-	if !file_exists(repo.Path) {
+	if !fileExists(repo.Path) {
 		msg := "Cloning repository"
-		log_progress(repo, msg, 0)
-		log(LOG_INFO, repo, msg)
-		_, _, err := run_git_sync("", "clone", "https://github.com/"+repo.Identifier+".git", repo.Path)
+		logProgess(repo, msg, 0)
+		log(Info, repo, msg)
+		_, _, err := runGitSync("", "clone", "https://github.com/"+repo.Identifier+".git", repo.Path)
 		check(err)
 	} else {
 		msg := fmt.Sprintf("Pulling repository at %s", repo.Path)
-		log_progress(repo, msg, 0)
-		log(LOG_INFO, repo, msg)
-		_, _, err := run_git_sync(repo.Path, "fetch", "origin")
+		logProgess(repo, msg, 0)
+		log(Info, repo, msg)
+		_, _, err := runGitSync(repo.Path, "fetch", "origin")
 
 		// TODO: Better handling of empty repositories
 		if err != nil && strings.Contains(err.Error(), "no such ref was fetched") {
-			log_progress(repo, "Finished (empty repository)", 1)
+			logProgess(repo, "Finished (empty repository)", 1)
 			return
 		} else {
 			check(err)
 		}
 
-		latestBranch = repo.get_current_branch()
-		_, _, err = run_git_sync(repo.Path, "reset", "--hard", "origin/"+latestBranch)
+		latestBranch = repo.getCurrentBranch()
+		_, _, err = runGitSync(repo.Path, "reset", "--hard", "origin/"+latestBranch)
 		check(err)
 	}
 
-	repo.VendoredFilters = repo.vendored_filters()
-	repo.update_files()
+	repo.VendoredFilters = repo.vendoredFilters()
+	repo.updateFiles()
 
 	if len(latestBranch) == 0 {
-		latestBranch = repo.get_current_branch()
+		latestBranch = repo.getCurrentBranch()
 	}
 
 	repo.CurrentBranch = latestBranch
 	repo.LatestBranch = latestBranch
 
-	latestCommit := repo.get_latest_commit()
+	latestCommit := repo.getLatestCommit()
 	repo.CurrentCommit = latestCommit
 	repo.LatestCommit = latestCommit
 }
 
-func (repo *Repo) check_path_vendored(path string) bool {
+func (repo *Repo) isPathVendored(path string) bool {
 	if enry.IsVendor(path) {
 		return true
 	}
@@ -171,78 +171,78 @@ func (repo *Repo) check_path_vendored(path string) bool {
 	return false
 }
 
-func (repo *Repo) skip_file_name(repo_file string) bool {
-	if config.Ignore.Vendor && repo.check_path_vendored(repo_file) {
-		log(LOG_INFO, repo, fmt.Sprintf("Skipping vendored file %s", repo_file))
+func (repo *Repo) shouldSkipFileByName(repoFile string) bool {
+	if config.Ignore.Vendor && repo.isPathVendored(repoFile) {
+		log(Info, repo, fmt.Sprintf("Skipping vendored file %s", repoFile))
 		return true
 	}
 
-	if config.Ignore.Dotfiles && enry.IsDotFile(repo_file) {
-		log(LOG_INFO, repo, fmt.Sprintf("Skipping dotfile file %s", repo_file))
+	if config.Ignore.Dotfiles && enry.IsDotFile(repoFile) {
+		log(Info, repo, fmt.Sprintf("Skipping dotfile file %s", repoFile))
 		return true
 	}
 
-	if config.Ignore.Configuration && enry.IsConfiguration(repo_file) {
-		log(LOG_INFO, repo, fmt.Sprintf("Skipping config file %s", repo_file))
+	if config.Ignore.Configuration && enry.IsConfiguration(repoFile) {
+		log(Info, repo, fmt.Sprintf("Skipping config file %s", repoFile))
 		return true
 	}
 
-	if config.Ignore.Image && enry.IsImage(repo_file) {
-		log(LOG_INFO, repo, fmt.Sprintf("Skipping image file %s", repo_file))
+	if config.Ignore.Image && enry.IsImage(repoFile) {
+		log(Info, repo, fmt.Sprintf("Skipping image file %s", repoFile))
 		return true
 	}
 
-	if config.Ignore.Test && enry.IsTest(repo_file) {
-		log(LOG_INFO, repo, fmt.Sprintf("Skipping test file %s", repo_file))
+	if config.Ignore.Test && enry.IsTest(repoFile) {
+		log(Info, repo, fmt.Sprintf("Skipping test file %s", repoFile))
 		return true
 	}
 
 	return false
 }
 
-func (repo *Repo) skip_file_data(repo_file string, data []byte) bool {
+func (repo *Repo) skipFileByData(repoFile string, data []byte) bool {
 	if config.Ignore.Binary && enry.IsBinary(data) {
-		log(LOG_INFO, repo, fmt.Sprintf("Skipping binary file %s", repo_file))
+		log(Info, repo, fmt.Sprintf("Skipping binary file %s", repoFile))
 		return true
 	}
 
-	if config.Ignore.Generated && enry.IsGenerated(repo_file, data) {
-		log(LOG_INFO, repo, fmt.Sprintf("Skipping generated file %s", repo_file))
+	if config.Ignore.Generated && enry.IsGenerated(repoFile, data) {
+		log(Info, repo, fmt.Sprintf("Skipping generated file %s", repoFile))
 		return true
 	}
 
 	return false
 }
 
-func (repo *Repo) repo_count() map[string]*IntIntPair {
+func (repo *Repo) count() map[string]*IntIntPair {
 	ret := map[string]*IntIntPair{}
 
 	flen := float64(len(repo.Files))
-	for i, repo_file := range repo.Files {
-		if len(repo_file) == 0 {
+	for i, repoFile := range repo.Files {
+		if len(repoFile) == 0 {
 			continue
 		}
 
-		msg := fmt.Sprintf("Counting file %s", repo_file)
-		log_progress(repo, msg, float64(i)/flen)
-		log(LOG_INFO, repo, msg)
+		msg := fmt.Sprintf("Counting file %s", repoFile)
+		logProgess(repo, msg, float64(i)/flen)
+		log(Info, repo, msg)
 
-		fpath := path.Join(repo.Path, repo_file)
+		fpath := path.Join(repo.Path, repoFile)
 
-		if repo.skip_file_name(repo_file) {
+		if repo.shouldSkipFileByName(repoFile) {
 			continue
 		}
 
 		data, err := os.ReadFile(fpath)
 		check(err)
 
-		if repo.skip_file_data(repo_file, data) {
+		if repo.skipFileByData(repoFile, data) {
 			continue
 		}
 
-		langs := enry.GetLanguages(repo_file, data)
+		langs := enry.GetLanguages(repoFile, data)
 		if len(langs) > 1 {
-			log(LOG_WARNING, repo, fmt.Sprintf("Potentially multiple languages found for file %s: %s", fpath, langs))
+			log(Warning, repo, fmt.Sprintf("Potentially multiple languages found for file %s: %s", fpath, langs))
 		}
 
 		if len(langs) == 0 {
@@ -259,45 +259,45 @@ func (repo *Repo) repo_count() map[string]*IntIntPair {
 		pair.bytes += len([]byte(data))
 	}
 
-	log(LOG_INFO, repo, "Finished")
-	log_progress(repo, "Finished", 1)
+	log(Info, repo, "Finished")
+	logProgess(repo, "Finished", 1)
 
 	return ret
 }
 
-func (repo *Repo) repo_count_by_commit() map[string]*IntIntPair {
+func (repo *Repo) countByCommit() map[string]*IntIntPair {
 	ret := map[string]*IntIntPair{}
 
-	commits := repo.get_matching_commits()
+	commits := repo.getMatchingCommits()
 	clen := float64(len(commits))
 
 	for i, commit := range commits {
-		if commit.skip_commit() {
-			log(LOG_INFO, repo, fmt.Sprintf("Skipping commit %s", commit.Hash))
+		if commit.shouldSkipCommit() {
+			log(Info, repo, fmt.Sprintf("Skipping commit %s", commit.Hash))
 			continue
 		}
 
 		msg := fmt.Sprintf("Checking out commit %s", commit.Hash)
-		log_progress(repo, msg, float64(i)/clen)
-		log(LOG_INFO, repo, msg)
-		repo.checkout_commit(commit)
+		logProgess(repo, msg, float64(i)/clen)
+		log(Info, repo, msg)
+		repo.checkoutCommit(commit)
 
-		for _, diff := range commit.get_diffs(repo) {
-			if diff.should_skip(repo) {
+		for _, diff := range commit.getDiffs(repo) {
+			if diff.shouldSkip(repo) {
 				continue
 			}
 
-			langs := diff.get_languages(repo)
+			langs := diff.getLanguages(repo)
 			if len(langs) > 1 {
-				log(LOG_WARNING, repo, fmt.Sprintf("Potentially multiple languages found for file %s: %s", diff.File, langs))
+				log(Warning, repo, fmt.Sprintf("Potentially multiple languages found for file %s: %s", diff.File, langs))
 			}
 
 			if len(langs) == 0 {
 				langs = append(langs, "Unknown")
 			}
 
-			if !should_skip_lang(langs[0]) {
-				repo.insert_unique_file(diff.File)
+			if !shouldSkipLang(langs[0]) {
+				repo.insertUniqueFile(diff.File)
 			}
 
 			pair := ret[langs[0]]
@@ -317,25 +317,25 @@ func (repo *Repo) repo_count_by_commit() map[string]*IntIntPair {
 	}
 
 	msg := fmt.Sprintf("Checking out branch %s", repo.LatestBranch)
-	log_progress(repo, msg, 0.99)
-	log(LOG_INFO, repo, msg)
-	repo.checkout_branch(repo.LatestBranch)
+	logProgess(repo, msg, 0.99)
+	log(Info, repo, msg)
+	repo.checkoutBranch(repo.LatestBranch)
 
-	log(LOG_INFO, repo, "Finished")
-	log_progress(repo, "Finished", 1)
+	log(Info, repo, "Finished")
+	logProgess(repo, "Finished", 1)
 
 	return ret
 }
 
-func (repo *Repo) get_matching_commits() []Commit {
+func (repo *Repo) getMatchingCommits() []Commit {
 	ret := []Commit{}
 
 	for _, author := range config.Authors {
-		commits_text, _, err := run_git_sync(repo.Path, "log", "--author="+author, "--no-merges", "--pretty=format:%h %ct")
+		commitsText, _, err := runGitSync(repo.Path, "log", "--author="+author, "--no-merges", "--pretty=format:%h %ct")
 		check(err)
-		commits_lines := strings.Split(commits_text, "\n")
+		commitsLines := strings.Split(commitsText, "\n")
 
-		for _, line := range commits_lines {
+		for _, line := range commitsLines {
 			split := strings.Fields(line)
 
 			if len(split) != 2 {
@@ -344,61 +344,61 @@ func (repo *Repo) get_matching_commits() []Commit {
 
 			timestamp, err := strconv.ParseUint(split[1], 10, 64)
 			check(err)
-			ret = commits_insert_sorted_unique(ret, commit_new(repo, split[0], timestamp))
+			ret = commitsInsertSortedUnique(ret, makeCommit(repo, split[0], timestamp))
 		}
 	}
 
 	return ret
 }
 
-func (repo *Repo) get_latest_commit() Commit {
-	stdout, _, err := run_git_sync(repo.Path, "log", "-n", "1", "--pretty=format:%h %ct")
+func (repo *Repo) getLatestCommit() Commit {
+	stdout, _, err := runGitSync(repo.Path, "log", "-n", "1", "--pretty=format:%h %ct")
 	if err != nil && strings.Contains(err.Error(), "does not have any commits yet") {
 		return Commit{}
 	} else {
 		check(err)
 	}
 
-	commit_line := strings.Trim(stdout, "\t\n\r ")
-	split := strings.Fields(commit_line)
+	commitLine := strings.Trim(stdout, "\t\n\r ")
+	split := strings.Fields(commitLine)
 
 	timestamp, err := strconv.ParseUint(split[1], 10, 64)
 	check(err)
 
-	return commit_new(repo, split[0], timestamp)
+	return makeCommit(repo, split[0], timestamp)
 }
 
-func (repo *Repo) get_current_branch() string {
-	stdout, _, err := run_git_sync(repo.Path, "branch", "--show-current")
+func (repo *Repo) getCurrentBranch() string {
+	stdout, _, err := runGitSync(repo.Path, "branch", "--show-current")
 	check(err)
 
 	return strings.Trim(stdout, "\n\r\t ")
 }
 
-func (repo *Repo) checkout_branch(branch string) {
+func (repo *Repo) checkoutBranch(branch string) {
 	if repo.CurrentBranch == branch {
 		return
 	}
 
-	_, _, err := run_git_sync(repo.Path, "checkout", branch)
+	_, _, err := runGitSync(repo.Path, "checkout", branch)
 	check(err)
 
 	repo.CurrentBranch = branch
-	repo.CurrentCommit = repo.get_latest_commit()
+	repo.CurrentCommit = repo.getLatestCommit()
 
-	repo.update_files()
+	repo.updateFiles()
 }
 
-func (repo *Repo) checkout_commit(commit Commit) {
+func (repo *Repo) checkoutCommit(commit Commit) {
 	if repo.CurrentCommit == commit {
 		return
 	}
 
-	_, _, err := run_git_sync(repo.Path, "checkout", commit.Hash)
+	_, _, err := runGitSync(repo.Path, "checkout", commit.Hash)
 	check(err)
 
 	repo.CurrentCommit = commit
 	repo.CurrentBranch = ""
 
-	repo.update_files()
+	repo.updateFiles()
 }

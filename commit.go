@@ -14,16 +14,16 @@ type Commit struct {
 	Root      bool
 }
 
-func commit_new(repo *Repo, hash string, timestamp uint64) Commit {
+func makeCommit(repo *Repo, hash string, timestamp uint64) Commit {
 	return Commit{
 		Hash:      hash,
 		Timestamp: timestamp,
-		Root:      commit_is_root(repo, hash),
+		Root:      commitIsRoot(repo, hash),
 	}
 }
 
-func commit_is_root(repo *Repo, hash string) bool {
-	_, stderr, err := run_git_sync(repo.Path, "rev-parse", hash+"^")
+func commitIsRoot(repo *Repo, hash string) bool {
+	_, stderr, err := runGitSync(repo.Path, "rev-parse", hash+"^")
 
 	if strings.Contains(stderr, "unknown revision or path not in the working tree") {
 		return true
@@ -34,22 +34,22 @@ func commit_is_root(repo *Repo, hash string) bool {
 	panic(err.Error())
 }
 
-func compare_commit(c1 Commit, c2 Commit) int {
+func compareCommit(c1 Commit, c2 Commit) int {
 	return cmp.Compare(c1.Timestamp, c2.Timestamp)
 }
 
-func commits_insert_sorted_unique(commits []Commit, commit Commit) []Commit {
-	idx := bin_search(commits, commit, compare_commit)
+func commitsInsertSortedUnique(commits []Commit, commit Commit) []Commit {
+	idx, found := slices.BinarySearchFunc(commits, commit, compareCommit)
 
-	if idx < 0 {
-		return slices.Insert(commits, ^idx, commit)
+	if !found {
+		return slices.Insert(commits, idx, commit)
 	}
 
 	return commits
 }
 
-func get_bytes_for_file_hash(hash string, repo *Repo) (int, error) {
-	stdout, _, err := run_git_sync(repo.Path, "cat-file", "-s", hash)
+func getBytesForFileHash(hash string, repo *Repo) (int, error) {
+	stdout, _, err := runGitSync(repo.Path, "cat-file", "-s", hash)
 	if err != nil && strings.Contains(err.Error(), "could not get object info") {
 		return 0, nil
 	}
@@ -68,20 +68,20 @@ func iabs(n int) int {
 	return n
 }
 
-func (commit Commit) get_diffs(repo *Repo) []Diff {
+func (commit Commit) getDiffs(repo *Repo) []Diff {
 	ret := []Diff{}
 
-	var prev_commit string
+	var prevCommit string
 	if commit.Root {
-		prev_commit = "4b825dc642cb6eb9a060e54bf8d69288fbee4904"
+		prevCommit = "4b825dc642cb6eb9a060e54bf8d69288fbee4904"
 	} else {
-		prev_commit = "HEAD^"
+		prevCommit = "HEAD^"
 	}
 
-	stdout, _, err := run_git_sync(repo.Path, "diff", "--patch", prev_commit, commit.Hash)
+	stdout, _, err := runGitSync(repo.Path, "diff", "--patch", prevCommit, commit.Hash)
 	check(err)
 
-	diff_lines := strings.Split(stdout, "\n")
+	diffLines := strings.Split(stdout, "\n")
 
 	var currentDiff Diff
 
@@ -91,18 +91,18 @@ func (commit Commit) get_diffs(repo *Repo) []Diff {
 		minLen = 1
 	}
 
-	for _, line := range diff_lines {
+	for _, line := range diffLines {
 		// Minimum viable line is a +/- followed by any other character
 		if len(line) < minLen {
 			continue
 		}
 
-		if str_starts_with(line, "diff") {
+		if stringBeginsWith(line, "diff") {
 			start := strings.Index(line, "a/")
 			end := strings.Index(line, "b/")
 
 			if start == -1 || end == -1 {
-				log(LOG_WARNING, repo, fmt.Sprintf("Patch line contained 'diff', but a/ was at %d and b/ was at %d", start, end))
+				log(Warning, repo, fmt.Sprintf("Patch line contained 'diff', but a/ was at %d and b/ was at %d", start, end))
 				continue
 			}
 
@@ -119,12 +119,12 @@ func (commit Commit) get_diffs(repo *Repo) []Diff {
 			continue
 		}
 
-		if str_starts_with(line, "rename to") {
+		if stringBeginsWith(line, "rename to") {
 			start := len("rename to ")
 			end := len(line)
 
 			if start == -1 || end == -1 {
-				log(LOG_WARNING, repo, fmt.Sprintf("Patch line contained 'diff', but a/ was at %d and b/ was at %d", start, end))
+				log(Warning, repo, fmt.Sprintf("Patch line contained 'diff', but a/ was at %d and b/ was at %d", start, end))
 				continue
 			}
 
@@ -149,9 +149,9 @@ func (commit Commit) get_diffs(repo *Repo) []Diff {
 	return append(ret, currentDiff)
 }
 
-func (commit Commit) skip_commit() bool {
-	for _, filtered_hash := range config.Commits {
-		if strings.HasPrefix(commit.Hash, filtered_hash) {
+func (commit Commit) shouldSkipCommit() bool {
+	for _, filteredHash := range config.Commits {
+		if strings.HasPrefix(commit.Hash, filteredHash) {
 			return true
 		}
 	}

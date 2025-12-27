@@ -12,7 +12,7 @@ type RepoResponse struct {
 	Fork      bool
 }
 
-func github_get_account_repos(account string, org bool, token string) []RepoResponse {
+func githubGetAccountRepos(account string, org bool, token string) []RepoResponse {
 	ret := []RepoResponse{}
 
 	shouldContinue := true
@@ -22,9 +22,9 @@ func github_get_account_repos(account string, org bool, token string) []RepoResp
 		var response *http.Response
 
 		if org {
-			response = github_get_org_repos(account, token, page)
+			response = githubGetOrgRepos(account, token, page)
 		} else {
-			response = github_get_user_repos(account, token, page)
+			response = githubGetUserRepos(account, token, page)
 		}
 
 		link := response.Header.Get("link")
@@ -43,7 +43,7 @@ func github_get_account_repos(account string, org bool, token string) []RepoResp
 	return ret
 }
 
-func github_get_user_repos(username string, token string, page int) *http.Response {
+func githubGetUserRepos(username string, token string, page int) *http.Response {
 	var endpoint string
 	if len(token) > 0 {
 		endpoint = "https://api.github.com/user/repos"
@@ -73,7 +73,7 @@ func github_get_user_repos(username string, token string, page int) *http.Respon
 	return response
 }
 
-func github_get_org_repos(org string, token string, page int) *http.Response {
+func githubGetOrgRepos(org string, token string, page int) *http.Response {
 	client := http.Client{}
 	request, err := http.NewRequest(
 		"GET",

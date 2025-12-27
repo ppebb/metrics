@@ -27,7 +27,7 @@ var termHeight int
 var cursorY int
 var silent bool
 
-func log_init(isSilent bool) {
+func initLog(isSilent bool) {
 	progMu = sync.Mutex{}
 	counter = -1
 	silent = isSilent
@@ -59,7 +59,7 @@ func log_init(isSilent bool) {
 	}
 }
 
-func log_get_cursor_pos() int {
+func logGetCursorPos() int {
 	if !isTerminal {
 		return -1
 	}
@@ -93,48 +93,48 @@ func log_get_cursor_pos() int {
 	}
 }
 
-func log_reset_cursor() {
+func logResetCursor() {
 	if isTerminal {
 		fmt.Print("\x1b[?25h")
 	}
 }
 
-func log_reset_term_if_needed() {
+func logResetTermIfNeeded() {
 	if isTerminal {
 		fmt.Printf("\x1b[%d;%dH\n", min(termHeight, cursorY), termWidth)
-		log_reset_cursor()
+		logResetCursor()
 	}
 }
 
-func log_close() {
+func logClose() {
 	fd.fd.Close()
 }
 
 type LogLevel uint8
 
 const (
-	LOG_CRITICAL LogLevel = iota
-	LOG_WARNING
-	LOG_DEBUG
-	LOG_INFO
+	Critical LogLevel = iota
+	Warning
+	Debug
+	Info
 )
 
 func (e LogLevel) String() string {
 	switch e {
-	case LOG_CRITICAL:
+	case Critical:
 		return "Critical"
-	case LOG_WARNING:
+	case Warning:
 		return "Warning"
-	case LOG_DEBUG:
+	case Debug:
 		return "Debug"
-	case LOG_INFO:
+	case Info:
 		return "Info"
 	default:
 		return fmt.Sprintf("%d", int(e))
 	}
 }
 
-func log_echo(level LogLevel, repo *Repo, message string, echo bool) {
+func logEcho(level LogLevel, repo *Repo, message string, echo bool) {
 	fd.mu.Lock()
 	defer fd.mu.Unlock()
 
@@ -153,10 +153,10 @@ func log_echo(level LogLevel, repo *Repo, message string, echo bool) {
 }
 
 func log(level LogLevel, repo *Repo, message string) {
-	log_echo(level, repo, message, false)
+	logEcho(level, repo, message, false)
 }
 
-func log_progress(repo *Repo, message string, completion float64) {
+func logProgess(repo *Repo, message string, completion float64) {
 	if !isTerminal || silent {
 		return
 	}

@@ -21,7 +21,7 @@ type ConcData struct {
 	f  int
 }
 
-func print_help() {
+func printHelp() {
 	fmt.Printf(`
 ppeb's git language metrics generator!!!
 
@@ -37,7 +37,7 @@ Usage: ./ppebtrics [OPTIONS]
 }
 
 func main() {
-	var config_path string
+	var configPath string
 	var dryRun = false
 	var silent = false
 
@@ -45,17 +45,17 @@ func main() {
 
 	if argsLen <= 1 {
 		fmt.Println("No arguments provided! --config is required to continue.")
-		print_help()
+		printHelp()
 	}
 
 	for i := 1; i < argsLen; i++ {
 		arg := os.Args[i]
 		switch arg {
 		case "-h", "--help":
-			print_help()
+			printHelp()
 		case "-c", "--config":
 			if argsLen > i+1 {
-				config_path = os.Args[i+1]
+				configPath = os.Args[i+1]
 				i++
 			}
 		case "-o", "--output":
@@ -69,11 +69,11 @@ func main() {
 			silent = true
 		default:
 			fmt.Printf("Unknown argument %s!\n", arg)
-			print_help()
+			printHelp()
 		}
 	}
 
-	if len(config_path) == 0 {
+	if len(configPath) == 0 {
 		panic("Missing config argument, provide a config.yml with -c or --config")
 	}
 
@@ -82,9 +82,9 @@ func main() {
 		outputPath = "./langs.svg"
 	}
 
-	log_init(silent)
-	defer log_close()
-	config_init(config_path)
+	initLog(silent)
+	defer logClose()
+	initConfig(configPath)
 
 	if dryRun {
 		fmt.Println("The following repositories will be cloned and analyzed:")
@@ -92,11 +92,11 @@ func main() {
 			fmt.Printf("    %s\n", v)
 		}
 
-		log_reset_cursor()
+		logResetCursor()
 		return
 	}
 
-	cursorY = log_get_cursor_pos()
+	cursorY = logGetCursorPos()
 
 	cumulative := ConcData{
 		mu: sync.Mutex{},
@@ -116,15 +116,15 @@ func main() {
 
 		defer func() {
 			if r := recover(); r != nil {
-				log(LOG_CRITICAL, lastRepo, fmt.Sprintf("Panic caught in WorkerID %d: %s, exiting...\n%s", workerID, r, debug.Stack()))
+				log(Critical, lastRepo, fmt.Sprintf("Panic caught in WorkerID %d: %s, exiting...\n%s", workerID, r, debug.Stack()))
 
 				if lastRepo != nil {
-					log(LOG_INFO, lastRepo, fmt.Sprintf("Reverting to branch %s", lastRepo.LatestBranch))
-					lastRepo.checkout_branch(lastRepo.LatestBranch)
+					log(Info, lastRepo, fmt.Sprintf("Reverting to branch %s", lastRepo.LatestBranch))
+					lastRepo.checkoutBranch(lastRepo.LatestBranch)
 				}
 
-				pstr := strings.Replace(fmt.Sprint(r), "\n", "", -1)
-				log_progress(lastRepo, fmt.Sprintf("Panic caught, %s, exiting...", pstr), -1)
+				pstr := strings.ReplaceAll(fmt.Sprint(r), "\n", "")
+				logProgess(lastRepo, fmt.Sprintf("Panic caught, %s, exiting...", pstr), -1)
 				closeOnce()
 			}
 		}()
@@ -134,17 +134,17 @@ func main() {
 			select {
 			case _, ok := <-cancel:
 				if !ok {
-					log_progress(lastRepo, "Exited", -1)
+					logProgess(lastRepo, "Exited", -1)
 					break REPOSLOOP
 				}
 			default:
-				log(LOG_INFO, nil, fmt.Sprintf("WorkerID %d: preparing to initialize repo %s", workerID, id))
+				log(Info, nil, fmt.Sprintf("WorkerID %d: preparing to initialize repo %s", workerID, id))
 				repo := Repo{
 					Identifier: id,
 				}
 
 				lastRepo = &repo
-				repo_initialize(&repo)
+				initRepo(&repo)
 
 				if len(repo.LatestCommit.Hash) == 0 {
 					continue
@@ -152,9 +152,9 @@ func main() {
 
 				var counts map[string]*IntIntPair
 				if config.Indepth {
-					counts = repo.repo_count_by_commit()
+					counts = repo.countByCommit()
 				} else {
-					counts = repo.repo_count()
+					counts = repo.count()
 				}
 
 				cumulative.mu.Lock()
@@ -200,13 +200,13 @@ func main() {
 	close(repoChannel)
 	wg.Wait()
 
-	log_reset_term_if_needed()
+	logResetTermIfNeeded()
 
 	if closed {
 		os.Exit(1)
 	}
 
-	create_svg(cumulative.v, cumulative.f)
+	createSVG(cumulative.v, cumulative.f)
 
 	for k, v := range cumulative.l {
 		totals := cumulative.v[k]
@@ -225,6 +225,6 @@ func main() {
 			fmt.Fprintf(&msg, "ID: %s, Lines: %d, Bytes: %d\n", triplet.lang, triplet.lines, triplet.bytes)
 		}
 
-		log(LOG_INFO, nil, msg.String())
+		log(Info, nil, msg.String())
 	}
 }

@@ -11,7 +11,7 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-func check_empty[T string | []string](t T, name string) {
+func checkEmpty[T string | []string](t T, name string) {
 	if len(t) == 0 {
 		panic(fmt.Sprintf("Config is missing field %s!", name))
 	}
@@ -67,7 +67,7 @@ var config Config
 var theme SVGTheme
 var reposToCheck []string
 
-func config_init(path string) {
+func initConfig(path string) {
 	data, err := os.ReadFile(path)
 	check(err)
 
@@ -75,15 +75,15 @@ func config_init(path string) {
 	err = yaml.Unmarshal(data, &config)
 	check(err)
 
-	check_empty(config.Location, "location")
+	checkEmpty(config.Location, "location")
 	// check_empty(config.Repositories, "repositories")
-	check_empty(config.Authors, "authors")
-	check_empty(config.Style.Type, "style.type")
-	check_empty(config.Style.Count, "style.count")
-	check_empty(config.Style.Theme, "style.theme")
+	checkEmpty(config.Authors, "authors")
+	checkEmpty(config.Style.Type, "style.type")
+	checkEmpty(config.Style.Count, "style.count")
+	checkEmpty(config.Style.Theme, "style.theme")
 	// check_empty(config.Token, "token")
 
-	if !file_exists(config.Style.Theme) {
+	if !fileExists(config.Style.Theme) {
 		panic(fmt.Sprintf("config.style.theme (%s) does not exist on disk!", config.Style.Theme))
 	}
 
@@ -142,12 +142,12 @@ func config_init(path string) {
 	copyToReposToCheck := func(repoResponses []RepoResponse) {
 		for _, repo := range repoResponses {
 			if config.ExcludeForks && repo.Fork {
-				log_echo(LOG_INFO, nil, fmt.Sprintf("Skipping forked repository %s", repo.Full_Name), true)
+				logEcho(Info, nil, fmt.Sprintf("Skipping forked repository %s", repo.Full_Name), true)
 				continue
 			}
 
 			if matched, pat := testRepo(repo.Full_Name); matched {
-				log_echo(LOG_INFO, nil, fmt.Sprintf("Skipping repository %s, matched filter %s", repo.Full_Name, pat), true)
+				logEcho(Info, nil, fmt.Sprintf("Skipping repository %s, matched filter %s", repo.Full_Name, pat), true)
 				continue
 			}
 
@@ -158,13 +158,13 @@ func config_init(path string) {
 	}
 
 	for _, user := range config.Users {
-		log_echo(LOG_INFO, nil, fmt.Sprintf("Fetching repositories for user %s", user), true)
-		copyToReposToCheck(github_get_account_repos(user, false, config.Token))
+		logEcho(Info, nil, fmt.Sprintf("Fetching repositories for user %s", user), true)
+		copyToReposToCheck(githubGetAccountRepos(user, false, config.Token))
 	}
 
 	for _, org := range config.Orgs {
-		log_echo(LOG_INFO, nil, fmt.Sprintf("Fetching repositories for org %s", org), true)
-		copyToReposToCheck(github_get_account_repos(org, true, config.Token))
+		logEcho(Info, nil, fmt.Sprintf("Fetching repositories for org %s", org), true)
+		copyToReposToCheck(githubGetAccountRepos(org, true, config.Token))
 	}
 
 	if len(reposToCheck) == 0 {

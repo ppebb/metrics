@@ -29,7 +29,7 @@ type Totals struct {
 var svgTmplFuncMap template.FuncMap
 var entryTmplFuncMap template.FuncMap
 
-func fmt_int(n int) string {
+func fmtInt(n int) string {
 	numStr := strconv.Itoa(n)
 	for i := len(numStr) - 3; i > 0; i -= 3 {
 		numStr = numStr[:i] + "," + numStr[i:]
@@ -38,21 +38,21 @@ func fmt_int(n int) string {
 	return numStr
 }
 
-func fmt_double(n float64) string {
+func fmtDouble(n float64) string {
 	return strings.TrimRight(fmt.Sprintf("%.2f", n), "0")
 }
 
-func fmt_bytes(n int, base int) string {
+func fmtBytes(n int, base int) string {
 	var prefix []string
 
-	prefix_1000 := []string{"", "k", "M", "G", "T", "P", "E", "Z", "Y"}
-	prefix_1024 := []string{"", "Ki", "Mi", "Gi", "Ti", "Pi", "Ei", "Zi", "Yi"}
+	prefix1000 := []string{"", "k", "M", "G", "T", "P", "E", "Z", "Y"}
+	prefix1024 := []string{"", "Ki", "Mi", "Gi", "Ti", "Pi", "Ei", "Zi", "Yi"}
 
 	switch base {
 	case 1000:
-		prefix = prefix_1000
+		prefix = prefix1000
 	case 1024:
-		prefix = prefix_1024
+		prefix = prefix1024
 	default:
 		panic("wrong prefix")
 	}
@@ -70,21 +70,21 @@ func fmt_bytes(n int, base int) string {
 		scaled /= fbase
 	}
 
-	return fmt.Sprintf("%s %s", fmt_double(scaled), prefix[j])
+	return fmt.Sprintf("%s %s", fmtDouble(scaled), prefix[j])
 }
 
-func fmt_count(lt StringIntIntTriplet) string {
+func fmtCount(lt StringIntIntTriplet) string {
 	switch config.Style.Count {
 	case "lines":
 		return fmt.Sprintf("%d lines", lt.lines)
 	case "bytes":
-		return fmt.Sprintf("%sB", fmt_bytes(lt.bytes, config.Style.BytesBase))
+		return fmt.Sprintf("%sB", fmtBytes(lt.bytes, config.Style.BytesBase))
 	default:
 		panic("Unknown config.style.count")
 	}
 }
 
-func calc_fmt_perc(lt StringIntIntTriplet, totals Totals) (float64, string) {
+func calcFmtPerc(lt StringIntIntTriplet, totals Totals) (float64, string) {
 	var perc float64
 
 	switch config.Style.Count {
@@ -96,7 +96,7 @@ func calc_fmt_perc(lt StringIntIntTriplet, totals Totals) (float64, string) {
 		panic("Unknown config.style.count")
 	}
 
-	percStr := fmt_double(perc * 100)
+	percStr := fmtDouble(perc * 100)
 	percStrLen := len(percStr)
 
 	if percStr[percStrLen-1] == '.' {
@@ -106,12 +106,12 @@ func calc_fmt_perc(lt StringIntIntTriplet, totals Totals) (float64, string) {
 	return perc, percStr
 }
 
-func fmt_totals(totals Totals) string {
+func fmtTotals(totals Totals) string {
 	switch config.Style.Count {
 	case "lines":
 		return fmt.Sprintf("Across %d Lines of Code in %d Files", totals.lines, totals.files)
 	case "bytes":
-		return fmt.Sprintf("Across %sB of Code in %d Files", fmt_bytes(totals.bytes, config.Style.BytesBase), totals.files)
+		return fmt.Sprintf("Across %sB of Code in %d Files", fmtBytes(totals.bytes, config.Style.BytesBase), totals.files)
 	default:
 		panic("Unknown config.style.count")
 	}
@@ -134,7 +134,7 @@ func indent(s string, by int) string {
 	return builder.String()
 }
 
-func create_svg(langs map[string]*IntIntPair, totalFiles int) {
+func createSVG(langs map[string]*IntIntPair, totalFiles int) {
 	svgTmplFuncMap = template.FuncMap{
 		"indent": indent,
 	}
@@ -151,7 +151,7 @@ func create_svg(langs map[string]*IntIntPair, totalFiles int) {
 	langsSorted := []StringIntIntTriplet{}
 
 	for k, v := range langs {
-		if should_skip_lang(k) {
+		if shouldSkipLang(k) {
 			delete(langs, k)
 			continue
 		}
@@ -161,17 +161,18 @@ func create_svg(langs map[string]*IntIntPair, totalFiles int) {
 			lines: v.lines,
 			bytes: v.bytes,
 		}
-		pos := bin_search(langsSorted, lt, func(lp1 StringIntIntTriplet, lp2 StringIntIntTriplet) int {
+		idx, found := slices.BinarySearchFunc(langsSorted, lt, func(lp1 StringIntIntTriplet, lp2 StringIntIntTriplet) int {
 			return cmp.Compare(lp1.lines, lp2.lines)
 		})
 
-		if pos < 0 {
-			langsSorted = slices.Insert(langsSorted, ^pos, lt)
+		if !found {
+			langsSorted = slices.Insert(langsSorted, idx, lt)
 		}
 	}
 
 	langsLen := len(langs)
 	keep := min(langsLen, config.LangsCount)
+	slices.Reverse(langsSorted)
 	langsSorted = langsSorted[:keep]
 
 	totals := Totals{
@@ -189,9 +190,9 @@ func create_svg(langs map[string]*IntIntPair, totalFiles int) {
 
 	switch strings.ToLower(config.Style.Type) {
 	case "vertical":
-		create_vertical(totals, langsSorted, outputFile)
+		createVertical(totals, langsSorted, outputFile)
 	case "compact":
-		create_compact(totals, langsSorted, outputFile)
+		createCompact(totals, langsSorted, outputFile)
 	default:
 		panic(fmt.Sprintf("Unknown style %s", config.Style.Type))
 	}
@@ -337,7 +338,7 @@ const SVGTEMPLATESTRING = `<svg width="{{ .Width }}" height="{{ .Height }}" view
 </svg>
 `
 
-func process_entries[T any](tmpl *template.Template, data []T) string {
+func processEntries[T any](tmpl *template.Template, data []T) string {
 	builder := new(strings.Builder)
 	dlen := len(data)
 
@@ -353,7 +354,7 @@ func process_entries[T any](tmpl *template.Template, data []T) string {
 	return builder.String()
 }
 
-func process_template(data SVGData, writer io.Writer) {
+func processTemplate(data SVGData, writer io.Writer) {
 	data.Theme = theme
 	tmpl, err := template.New("svg").Funcs(svgTmplFuncMap).Parse(SVGTEMPLATESTRING)
 	check(err)
@@ -376,7 +377,7 @@ type CompactEntryData struct {
 	Color      string
 }
 
-func create_compact(totals Totals, langsSorted []StringIntIntTriplet, outputFile *os.File) {
+func createCompact(totals Totals, langsSorted []StringIntIntTriplet, outputFile *os.File) {
 	const MASK = `<mask id="rect-mask">
 	<rect x="%d" y="0" width="%d" height="8" fill="white" rx="5" />
 </mask>` + "\n"
@@ -412,7 +413,7 @@ func create_compact(totals Totals, langsSorted []StringIntIntTriplet, outputFile
 	rectX := rectXInitial
 
 	for i, lt := range langsSorted {
-		perc, percStr := calc_fmt_perc(lt, totals)
+		perc, percStr := calcFmtPerc(lt, totals)
 		rectW := int(math.Round(perc * float64(totalRectW)))
 
 		// Forcibly overflow since it'll get masked off, in case it's a pixel or two short...
@@ -425,7 +426,7 @@ func create_compact(totals Totals, langsSorted []StringIntIntTriplet, outputFile
 			TotalWidth: width,
 			XOffset:    i % 2 * ((width / 2) - 12),
 			YOffset:    i / 2 * 20,
-			CountStr:   fmt_count(lt),
+			CountStr:   fmtCount(lt),
 			PercStr:    percStr,
 			Delay:      450 + i*150,
 			FillDelay:  750 + i*150,
@@ -443,16 +444,16 @@ func create_compact(totals Totals, langsSorted []StringIntIntTriplet, outputFile
 	if config.Style.ShowTotal {
 		bodyY += 10
 		heightConst += 10
-		subHeader = fmt_totals(totals)
+		subHeader = fmtTotals(totals)
 	}
 
-	process_template(SVGData{
+	processTemplate(SVGData{
 		Width:     width,
 		Height:    int(math.Ceil((float64(count)/2.0)))*20 + heightConst,
 		TitleX:    width / 2,
 		BodyY:     bodyY,
 		SubHeader: subHeader,
-		Entries:   fmt.Sprintf(MASK, rectXInitial, totalRectW) + process_entries(tmpl, entries),
+		Entries:   fmt.Sprintf(MASK, rectXInitial, totalRectW) + processEntries(tmpl, entries),
 		Styles: `.header, .subheader { text-anchor: middle; }
 .lang-name, .lang-perc, .lang-count { dominant-baseline: middle; }
 .lang-perc, .lang-count { text-anchor: end; }`,
@@ -471,7 +472,7 @@ type VerticalEntryData struct {
 	Color     string
 }
 
-func create_vertical(totals Totals, langsSorted []StringIntIntTriplet, outputFile *os.File) {
+func createVertical(totals Totals, langsSorted []StringIntIntTriplet, outputFile *os.File) {
 	const SVGENTRY = `<g transform="translate({{ .XOffset }}, {{ .YOffset }})">
 	<g class="stagger" style="animation-delay: {{ .Delay }}ms">
 		<text data-testid="lang-name" x="2" y="15" class="lang-name">{{ .LangName }} <tspan class="lang-count">({{ .CountStr }})</tspan></text>
@@ -493,13 +494,13 @@ func create_vertical(totals Totals, langsSorted []StringIntIntTriplet, outputFil
 	entries := make([]VerticalEntryData, count)
 
 	for i, lt := range langsSorted {
-		perc, percStr := calc_fmt_perc(lt, totals)
+		perc, percStr := calcFmtPerc(lt, totals)
 
 		entries[i] = VerticalEntryData{
 			LangName:  lt.lang,
 			XOffset:   25,
 			YOffset:   i * 40,
-			CountStr:  fmt_count(lt),
+			CountStr:  fmtCount(lt),
 			PercStr:   percStr,
 			Delay:     450 + i*150,
 			FillDelay: 750 + i*150,
@@ -514,16 +515,16 @@ func create_vertical(totals Totals, langsSorted []StringIntIntTriplet, outputFil
 	if config.Style.ShowTotal {
 		bodyY += 10
 		heightConst += 10
-		subHeader = fmt_totals(totals)
+		subHeader = fmtTotals(totals)
 	}
 
-	process_template(SVGData{
+	processTemplate(SVGData{
 		Width:     300,
 		Height:    count*40 + heightConst,
 		TitleX:    25,
 		BodyY:     bodyY,
 		SubHeader: subHeader,
-		Entries:   process_entries(tmpl, entries),
+		Entries:   processEntries(tmpl, entries),
 		Styles:    `.subheader { dominant-baseline: middle; }`,
 	}, outputFile)
 }

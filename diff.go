@@ -19,7 +19,7 @@ type Diff struct {
 	Removed IntIntPair
 }
 
-func (diff Diff) should_skip(repo *Repo) bool {
+func (diff Diff) shouldSkip(repo *Repo) bool {
 	if stored, ok := repo.FileSkipMap[diff.File]; ok {
 		return stored
 	}
@@ -28,21 +28,21 @@ func (diff Diff) should_skip(repo *Repo) bool {
 
 	fpath := path.Join(repo.Path, diff.File)
 
-	fe := file_exists(fpath)
-	sy := fe && is_symlink(fpath)
-	di := fe && is_directory(fpath)
+	fe := fileExists(fpath)
+	sy := fe && isSymlink(fpath)
+	di := fe && isDirectory(fpath)
 	if !fe || sy || di {
-		log(LOG_INFO, repo, fmt.Sprintf("Skipping path %s, exists: %t, symlink: %t, dir: %t", fpath, fe, sy, di))
+		log(Info, repo, fmt.Sprintf("Skipping path %s, exists: %t, symlink: %t, dir: %t", fpath, fe, sy, di))
 		// If the file doesn't exist, keep checking because sometimes it shows
 		// up later?? May have to do with renames...
 		return true
-	} else if repo.skip_file_name(diff.File) {
+	} else if repo.shouldSkipFileByName(diff.File) {
 		ret = true
 	} else {
 		data, err := os.ReadFile(fpath)
 		check(err)
 
-		if repo.skip_file_data(diff.File, data) {
+		if repo.skipFileByData(diff.File, data) {
 			ret = true
 		}
 	}
@@ -51,7 +51,7 @@ func (diff Diff) should_skip(repo *Repo) bool {
 	return ret
 }
 
-func (diff Diff) get_languages(repo *Repo) []string {
+func (diff Diff) getLanguages(repo *Repo) []string {
 	if stored, ok := repo.FileLangMap[diff.File]; ok {
 		return stored
 	}
