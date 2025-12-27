@@ -217,12 +217,14 @@ func main() {
 			lines = totals.lines
 			bytes = totals.bytes
 		}
-		msg := fmt.Sprintf("Language %s: %d lines, %d bytes\n", k, lines, bytes)
+
+		var msg strings.Builder
+		fmt.Fprintf(&msg, "Language %s: %d lines, %d bytes\n", k, lines, bytes)
 
 		for _, triplet := range v {
-			msg += fmt.Sprintf("ID: %s, Lines: %d, Bytes: %d\n", triplet.lang, triplet.lines, triplet.bytes)
+			fmt.Fprintf(&msg, "ID: %s, Lines: %d, Bytes: %d\n", triplet.lang, triplet.lines, triplet.bytes)
 		}
 
-		log(LOG_INFO, nil, msg)
+		log(LOG_INFO, nil, msg.String())
 	}
 }
