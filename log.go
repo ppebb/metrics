@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 
 	"golang.org/x/sys/unix"
 )
@@ -32,7 +33,12 @@ func initLog(isSilent bool) {
 	counter = -1
 	silent = isSilent
 
-	logFd, err := os.Create("./logs")
+	dt := time.Now()
+
+	err := os.MkdirAll("./logs", os.FileMode(0755))
+	check(err)
+
+	logFd, err := os.Create(fmt.Sprintf("./logs/%s.log", dt.Format(time.RFC822)))
 	check(err)
 
 	fd = fdSafe{
