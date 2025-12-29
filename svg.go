@@ -14,7 +14,7 @@ import (
 	"github.com/go-enry/go-enry/v2"
 )
 
-type StringIntIntTriplet struct {
+type LineBytePairForLang struct {
 	lang  string
 	lines int
 	bytes int
@@ -73,7 +73,7 @@ func fmtBytes(n int, base int) string {
 	return fmt.Sprintf("%s %s", fmtDouble(scaled), prefix[j])
 }
 
-func fmtCount(lt StringIntIntTriplet) string {
+func fmtCount(lt LineBytePairForLang) string {
 	switch config.Style.Count {
 	case "lines":
 		return fmt.Sprintf("%d lines", lt.lines)
@@ -84,7 +84,7 @@ func fmtCount(lt StringIntIntTriplet) string {
 	}
 }
 
-func calcFmtPerc(lt StringIntIntTriplet, totals Totals) (float64, string) {
+func calcFmtPerc(lt LineBytePairForLang, totals Totals) (float64, string) {
 	var perc float64
 
 	switch config.Style.Count {
@@ -134,7 +134,7 @@ func indent(s string, by int) string {
 	return builder.String()
 }
 
-func createSVG(langs map[string]*IntIntPair, totalFiles int) {
+func createSVG(langs map[string]*LineBytePair, totalFiles int) {
 	svgTmplFuncMap = template.FuncMap{
 		"indent": indent,
 	}
@@ -148,7 +148,7 @@ func createSVG(langs map[string]*IntIntPair, totalFiles int) {
 		},
 	}
 
-	langsSorted := []StringIntIntTriplet{}
+	langsSorted := []LineBytePairForLang{}
 
 	for k, v := range langs {
 		if shouldSkipLang(k) {
@@ -156,12 +156,12 @@ func createSVG(langs map[string]*IntIntPair, totalFiles int) {
 			continue
 		}
 
-		lt := StringIntIntTriplet{
+		lt := LineBytePairForLang{
 			lang:  k,
 			lines: v.lines,
 			bytes: v.bytes,
 		}
-		idx, found := slices.BinarySearchFunc(langsSorted, lt, func(lp1 StringIntIntTriplet, lp2 StringIntIntTriplet) int {
+		idx, found := slices.BinarySearchFunc(langsSorted, lt, func(lp1 LineBytePairForLang, lp2 LineBytePairForLang) int {
 			return cmp.Compare(lp1.lines, lp2.lines)
 		})
 
@@ -377,7 +377,7 @@ type CompactEntryData struct {
 	Color      string
 }
 
-func createCompact(totals Totals, langsSorted []StringIntIntTriplet, outputFile *os.File) {
+func createCompact(totals Totals, langsSorted []LineBytePairForLang, outputFile *os.File) {
 	const MASK = `<mask id="rect-mask">
 	<rect x="%d" y="0" width="%d" height="8" fill="white" rx="5" />
 </mask>` + "\n"
@@ -472,7 +472,7 @@ type VerticalEntryData struct {
 	Color     string
 }
 
-func createVertical(totals Totals, langsSorted []StringIntIntTriplet, outputFile *os.File) {
+func createVertical(totals Totals, langsSorted []LineBytePairForLang, outputFile *os.File) {
 	const SVGENTRY = `<g transform="translate({{ .XOffset }}, {{ .YOffset }})">
 	<g class="stagger" style="animation-delay: {{ .Delay }}ms">
 		<text data-testid="lang-name" x="2" y="15" class="lang-name">{{ .LangName }} <tspan class="lang-count">({{ .CountStr }})</tspan></text>

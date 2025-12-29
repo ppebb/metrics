@@ -25,7 +25,7 @@ type Repo struct {
 	LatestCommit        Commit
 	CurrentBranch       string
 	LatestBranch        string
-	CommitCounts        map[string]*IntIntPair
+	CommitCounts        map[string]*LineBytePair
 	CommitHashesOrdered []string
 	// Bit of a misnomer. This is also used to track the position when
 	// outputting to the console. :)
@@ -38,7 +38,7 @@ func initRepo(repo *Repo) {
 	repo.UniqueFiles = []string{}
 	repo.FileLangMap = map[string][]string{}
 	repo.FileSkipMap = map[string]bool{}
-	repo.CommitCounts = map[string]*IntIntPair{}
+	repo.CommitCounts = map[string]*LineBytePair{}
 	repo.CommitHashesOrdered = []string{}
 	repo.LogID = -1
 
@@ -218,8 +218,8 @@ func (repo *Repo) skipFileByData(repoFile string, data []byte) bool {
 	return false
 }
 
-func (repo *Repo) count() map[string]*IntIntPair {
-	ret := map[string]*IntIntPair{}
+func (repo *Repo) count() map[string]*LineBytePair {
+	ret := map[string]*LineBytePair{}
 
 	flen := float64(len(repo.Files))
 	for i, repoFile := range repo.Files {
@@ -255,7 +255,7 @@ func (repo *Repo) count() map[string]*IntIntPair {
 
 		pair := ret[langs[0]]
 		if pair == nil {
-			pair = &IntIntPair{}
+			pair = &LineBytePair{}
 			ret[langs[0]] = pair
 		}
 
@@ -269,8 +269,8 @@ func (repo *Repo) count() map[string]*IntIntPair {
 	return ret
 }
 
-func (repo *Repo) countByCommit() map[string]*IntIntPair {
-	ret := map[string]*IntIntPair{}
+func (repo *Repo) countByCommit() map[string]*LineBytePair {
+	ret := map[string]*LineBytePair{}
 
 	commits := repo.getMatchingCommits()
 	clen := float64(len(commits))
@@ -286,7 +286,7 @@ func (repo *Repo) countByCommit() map[string]*IntIntPair {
 		log(Info, repo, msg)
 		repo.checkoutCommit(commit)
 
-		commitPair := &IntIntPair{}
+		commitPair := &LineBytePair{}
 		repo.CommitCounts[commit.Hash] = commitPair
 
 		for _, diff := range commit.getDiffs(repo) {
@@ -309,7 +309,7 @@ func (repo *Repo) countByCommit() map[string]*IntIntPair {
 
 			pair := ret[langs[0]]
 			if pair == nil {
-				pair = &IntIntPair{}
+				pair = &LineBytePair{}
 				ret[langs[0]] = pair
 			}
 

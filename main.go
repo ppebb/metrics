@@ -16,8 +16,8 @@ func check(e error) {
 
 type ConcData struct {
 	mu    sync.Mutex
-	v     map[string]*IntIntPair
-	l     map[string][]StringIntIntTriplet
+	v     map[string]*LineBytePair
+	l     map[string][]LineBytePairForLang
 	f     int
 	repos []Repo
 }
@@ -101,8 +101,8 @@ func main() {
 
 	cumulative := ConcData{
 		mu:    sync.Mutex{},
-		v:     map[string]*IntIntPair{},
-		l:     map[string][]StringIntIntTriplet{},
+		v:     map[string]*LineBytePair{},
+		l:     map[string][]LineBytePairForLang{},
 		f:     0,
 		repos: []Repo{},
 	}
@@ -152,7 +152,7 @@ func main() {
 					continue
 				}
 
-				var counts map[string]*IntIntPair
+				var counts map[string]*LineBytePair
 				if config.Indepth {
 					counts = repo.countByCommit()
 				} else {
@@ -162,17 +162,17 @@ func main() {
 				cumulative.mu.Lock()
 				for k, v := range counts {
 					if cumulative.v[k] == nil {
-						cumulative.v[k] = &IntIntPair{}
+						cumulative.v[k] = &LineBytePair{}
 					}
 
 					cumulative.v[k].lines += v.lines
 					cumulative.v[k].bytes += v.bytes
 
 					if cumulative.l[k] == nil {
-						cumulative.l[k] = []StringIntIntTriplet{}
+						cumulative.l[k] = []LineBytePairForLang{}
 					}
 
-					cumulative.l[k] = append(cumulative.l[k], StringIntIntTriplet{
+					cumulative.l[k] = append(cumulative.l[k], LineBytePairForLang{
 						lang:  repo.Identifier,
 						lines: v.lines,
 						bytes: v.bytes,

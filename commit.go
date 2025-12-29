@@ -112,8 +112,8 @@ func (commit Commit) getDiffs(repo *Repo) []Diff {
 
 			currentDiff = Diff{
 				File:    line[start+2 : end-1],
-				Added:   IntIntPair{},
-				Removed: IntIntPair{},
+				Added:   LineBytePair{},
+				Removed: LineBytePair{},
 			}
 
 			continue
