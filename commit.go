@@ -131,6 +131,13 @@ func (commit Commit) getDiffs(repo *Repo) []Diff {
 			currentDiff.File = line[start:end]
 		}
 
+		// Skip lines in either of the following format
+		// --- a/dir/file.ext
+		// +++ b/dir/file.ext
+		if stringBeginsWith(line, "+++") || stringBeginsWith(line, "---") {
+			continue
+		}
+
 		c0 := line[0]
 		c1 := line[1:]
 
