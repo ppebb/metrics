@@ -15,10 +15,11 @@ func check(e error) {
 }
 
 type ConcData struct {
-	mu sync.Mutex
-	v  map[string]*IntIntPair
-	l  map[string][]StringIntIntTriplet
-	f  int
+	mu    sync.Mutex
+	v     map[string]*IntIntPair
+	l     map[string][]StringIntIntTriplet
+	f     int
+	repos []Repo
 }
 
 func printHelp() {
@@ -99,10 +100,11 @@ func main() {
 	cursorY = logGetCursorPos()
 
 	cumulative := ConcData{
-		mu: sync.Mutex{},
-		v:  map[string]*IntIntPair{},
-		l:  map[string][]StringIntIntTriplet{},
-		f:  0,
+		mu:    sync.Mutex{},
+		v:     map[string]*IntIntPair{},
+		l:     map[string][]StringIntIntTriplet{},
+		f:     0,
+		repos: []Repo{},
 	}
 
 	var cancelChannel chan bool
@@ -179,6 +181,7 @@ func main() {
 				}
 
 				cumulative.f += len(repo.UniqueFiles)
+				cumulative.repos = append(cumulative.repos, repo)
 				cumulative.mu.Unlock()
 			}
 		}
@@ -223,6 +226,18 @@ func main() {
 
 		for _, triplet := range v {
 			fmt.Fprintf(&msg, "ID: %s, Lines: %d, Bytes: %d\n", triplet.lang, triplet.lines, triplet.bytes)
+		}
+
+		log(Info, nil, msg.String())
+	}
+
+	for _, repo := range cumulative.repos {
+		var msg strings.Builder
+		fmt.Fprintf(&msg, "Commit-by-commit stats for repo '%s'\n", repo.Identifier)
+
+		for _, hash := range repo.CommitHashesOrdered {
+			v := repo.CommitCounts[hash]
+			fmt.Fprintf(&msg, "Commit: %s, Lines: %d, Bytes: %d\n", hash, v.lines, v.bytes)
 		}
 
 		log(Info, nil, msg.String())

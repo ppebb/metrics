@@ -14,17 +14,19 @@ import (
 )
 
 type Repo struct {
-	Identifier      string
-	Path            string
-	VendoredFilters []*regexp.Regexp
-	Files           []string
-	UniqueFiles     []string
-	FileLangMap     map[string][]string
-	FileSkipMap     map[string]bool
-	CurrentCommit   Commit
-	LatestCommit    Commit
-	CurrentBranch   string
-	LatestBranch    string
+	Identifier          string
+	Path                string
+	VendoredFilters     []*regexp.Regexp
+	Files               []string
+	UniqueFiles         []string
+	FileLangMap         map[string][]string
+	FileSkipMap         map[string]bool
+	CurrentCommit       Commit
+	LatestCommit        Commit
+	CurrentBranch       string
+	LatestBranch        string
+	CommitCounts        map[string]*IntIntPair
+	CommitHashesOrdered []string
 	// Bit of a misnomer. This is also used to track the position when
 	// outputting to the console. :)
 	LogID int
@@ -36,6 +38,8 @@ func initRepo(repo *Repo) {
 	repo.UniqueFiles = []string{}
 	repo.FileLangMap = map[string][]string{}
 	repo.FileSkipMap = map[string]bool{}
+	repo.CommitCounts = map[string]*IntIntPair{}
+	repo.CommitHashesOrdered = []string{}
 	repo.LogID = -1
 
 	repo.pullOrClone()
@@ -282,6 +286,9 @@ func (repo *Repo) countByCommit() map[string]*IntIntPair {
 		log(Info, repo, msg)
 		repo.checkoutCommit(commit)
 
+		commitPair := &IntIntPair{}
+		repo.CommitCounts[commit.Hash] = commitPair
+
 		for _, diff := range commit.getDiffs(repo) {
 			if diff.shouldSkip(repo) {
 				continue
@@ -306,14 +313,23 @@ func (repo *Repo) countByCommit() map[string]*IntIntPair {
 				ret[langs[0]] = pair
 			}
 
+			var lines int
+			var bytes int
 			if config.CountTotal {
-				pair.lines += diff.Added.lines - diff.Removed.lines
-				pair.bytes += diff.Added.bytes - diff.Removed.bytes
+				lines = diff.Added.lines - diff.Removed.lines
+				bytes = diff.Added.bytes - diff.Removed.bytes
 			} else {
-				pair.lines += diff.Added.lines + diff.Removed.lines
-				pair.bytes += diff.Added.bytes + diff.Removed.bytes
+				lines = diff.Added.lines + diff.Removed.lines
+				bytes = diff.Added.bytes + diff.Removed.bytes
 			}
+
+			pair.lines += lines
+			pair.bytes += bytes
+			commitPair.lines += lines
+			commitPair.bytes += bytes
 		}
+
+		repo.CommitHashesOrdered = append(repo.CommitHashesOrdered, commit.Hash)
 	}
 
 	msg := fmt.Sprintf("Checking out branch %s", repo.LatestBranch)
