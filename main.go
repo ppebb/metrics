@@ -22,6 +22,8 @@ type ConcData struct {
 	repos []Repo
 }
 
+const TMPFILE = "/tmp/metrics_lock"
+
 func printHelp() {
 	fmt.Printf(`
 ppeb's git language metrics generator!!!
@@ -81,6 +83,24 @@ func main() {
 	if len(outputPath) == 0 {
 		fmt.Println("No output path specified! Defaulting to ./langs.svg")
 		outputPath = "./langs.svg"
+	}
+
+	_, err := os.Stat(TMPFILE)
+
+	// 3 cases
+	// Lock file exists and is read
+	// Lock file failed to read
+	// Lock file does not exist
+
+	if err != nil && !os.IsNotExist(err) {
+		// Failed to read lock file
+		panic(fmt.Sprintf("Failed to read lock file: %s\n", err))
+	} else if err == nil {
+		panic(fmt.Sprintf("Lock file '%s' is currently held by another process. Only remove it if you are sure no other instance is running!", TMPFILE))
+	} else if os.IsNotExist(err) {
+		// Create lock file
+		_, err := os.Create(TMPFILE)
+		check(err)
 	}
 
 	initLog(silent)
@@ -241,5 +261,11 @@ func main() {
 		}
 
 		log(Info, nil, msg.String())
+	}
+
+	err = os.Remove(TMPFILE)
+
+	if err != nil {
+		fmt.Printf("Failed to remove lockfile: %s\n", err)
 	}
 }
