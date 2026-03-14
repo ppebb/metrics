@@ -51,14 +51,15 @@ type Config struct {
 	Filters      []string
 	Commits      []string
 	Ignore       struct {
-		Vendor        bool
-		Dotfiles      bool
-		Configuration bool
-		Image         bool
-		Test          bool
-		Binary        bool
-		Generated     bool
-		Langs         []string
+		LinguistVendor bool
+		EnryVendor     bool
+		Dotfiles       bool
+		Configuration  bool
+		Image          bool
+		Test           bool
+		Binary         bool
+		Generated      bool
+		Langs          []string
 	}
 }
 

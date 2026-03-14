@@ -162,10 +162,6 @@ func (repo *Repo) pullOrClone() {
 }
 
 func (repo *Repo) isPathVendored(path string) bool {
-	if enry.IsVendor(path) {
-		return true
-	}
-
 	for _, filter := range repo.VendoredFilters {
 		if filter.MatchString(path) {
 			return true
@@ -176,8 +172,13 @@ func (repo *Repo) isPathVendored(path string) bool {
 }
 
 func (repo *Repo) shouldSkipFileByName(repoFile string) bool {
-	if config.Ignore.Vendor && repo.isPathVendored(repoFile) {
-		log(Info, repo, fmt.Sprintf("Skipping vendored file %s", repoFile))
+	if config.Ignore.EnryVendor && enry.IsVendor(repoFile) {
+		log(Info, repo, fmt.Sprintf("Skipping enry vendored file %s", repoFile))
+		return true
+	}
+
+	if config.Ignore.LinguistVendor && repo.isPathVendored(repoFile) {
+		log(Info, repo, fmt.Sprintf("Skipping linguist-vendored file %s", repoFile))
 		return true
 	}
 

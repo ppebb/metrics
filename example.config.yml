@@ -27,7 +27,8 @@ filters:
   - "reaganism"
   - "terraprisma"
 ignore:
-  vendor: true
+  enryvendor: true
+  linguistvendor: true
   dotfiles: true
   binary: true
   configuration: true
