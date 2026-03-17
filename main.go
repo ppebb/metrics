@@ -168,7 +168,7 @@ func main() {
 					tmp := state.Repos[repo.Identifier]
 					oldRepo = &tmp
 				}
-				initRepo(&repo, oldRepo)
+				repo.init(oldRepo)
 
 				if len(repo.LatestCommit.Hash) == 0 {
 					continue

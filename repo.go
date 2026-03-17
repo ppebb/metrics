@@ -36,7 +36,7 @@ type Repo struct {
 	oldRepo *SerializedRepo
 }
 
-func initRepo(repo *Repo, oldRepo *SerializedRepo) {
+func (repo *Repo) init(oldRepo *SerializedRepo) {
 	repo.Path = repoPath(repo.Identifier)
 
 	repo.UniqueFiles = []string{}
