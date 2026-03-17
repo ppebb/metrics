@@ -158,8 +158,8 @@ func createSVG(langs map[string]*LineBytePair, totalFiles int) {
 
 		lt := LineBytePairForLang{
 			lang:  k,
-			lines: v.lines,
-			bytes: v.bytes,
+			lines: v.Lines,
+			bytes: v.Bytes,
 		}
 		idx, found := slices.BinarySearchFunc(langsSorted, lt, func(lp1 LineBytePairForLang, lp2 LineBytePairForLang) int {
 			return cmp.Compare(lp1.lines, lp2.lines)

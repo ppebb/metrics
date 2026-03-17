@@ -3,3 +3,4 @@ repos
 config.yml
 logs
 *.svg
+state.gob

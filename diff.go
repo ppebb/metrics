@@ -9,8 +9,8 @@ import (
 )
 
 type LineBytePair struct {
-	lines int
-	bytes int
+	Lines int
+	Bytes int
 }
 
 type Diff struct {

@@ -143,11 +143,11 @@ func (commit Commit) getDiffs(repo *Repo) []Diff {
 
 		switch c0 {
 		case '+':
-			currentDiff.Added.lines++
-			currentDiff.Added.bytes += len([]byte(c1))
+			currentDiff.Added.Lines++
+			currentDiff.Added.Bytes += len([]byte(c1))
 		case '-':
-			currentDiff.Removed.lines++
-			currentDiff.Removed.bytes += len([]byte(c1))
+			currentDiff.Removed.Lines++
+			currentDiff.Removed.Bytes += len([]byte(c1))
 		default:
 			continue
 		}

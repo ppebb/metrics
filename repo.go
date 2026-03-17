@@ -19,6 +19,7 @@ type Repo struct {
 	VendoredFilters     []*regexp.Regexp
 	Files               []string
 	UniqueFiles         []string
+	UniqueFileCount     int
 	FileLangMap         map[string][]string
 	FileSkipMap         map[string]bool
 	CurrentCommit       Commit
@@ -26,13 +27,16 @@ type Repo struct {
 	CurrentBranch       string
 	LatestBranch        string
 	CommitCounts        map[string]*LineBytePair
+	LangCounts          map[string]*LineBytePair
 	CommitHashesOrdered []string
 	// Bit of a misnomer. This is also used to track the position when
 	// outputting to the console. :)
 	LogID int
+
+	oldRepo *SerializedRepo
 }
 
-func initRepo(repo *Repo) {
+func initRepo(repo *Repo, oldRepo *SerializedRepo) {
 	repo.Path = repoPath(repo.Identifier)
 
 	repo.UniqueFiles = []string{}
@@ -43,6 +47,7 @@ func initRepo(repo *Repo) {
 	repo.LogID = -1
 
 	repo.pullOrClone()
+	repo.oldRepo = oldRepo
 
 	log(Info, repo, fmt.Sprintf("Initialized repository at %s", repo.Path))
 }
@@ -53,6 +58,7 @@ func (repo *Repo) insertUniqueFile(file string) {
 	if !found {
 		log(Debug, repo, fmt.Sprintf("Adding unique file %s", file))
 		repo.UniqueFiles = slices.Insert(repo.UniqueFiles, idx, file)
+		repo.UniqueFileCount = len(repo.UniqueFiles)
 	}
 }
 
@@ -260,8 +266,8 @@ func (repo *Repo) count() map[string]*LineBytePair {
 			ret[langs[0]] = pair
 		}
 
-		pair.lines += bytes.Count(data, []byte{'\n'})
-		pair.bytes += len([]byte(data))
+		pair.Lines += bytes.Count(data, []byte{'\n'})
+		pair.Bytes += len([]byte(data))
 	}
 
 	log(Info, repo, "Finished")
@@ -270,11 +276,44 @@ func (repo *Repo) count() map[string]*LineBytePair {
 	return ret
 }
 
-func (repo *Repo) countByCommit() map[string]*LineBytePair {
-	ret := map[string]*LineBytePair{}
+func commitHashesEqual(a []string, b []string) bool {
+	if len(a) != len(b) {
+		return false
+	}
 
+	for i := range a {
+		if a[i] != b[i] {
+			return false
+		}
+	}
+
+	return true
+}
+
+func (repo *Repo) countByCommit() map[string]*LineBytePair {
 	commits := repo.getMatchingCommits()
 	clen := float64(len(commits))
+
+	// Sort commits to be compared with old commits
+	for _, commit := range commits {
+		if !commit.shouldSkipCommit() {
+			repo.CommitHashesOrdered = append(repo.CommitHashesOrdered, commit.Hash)
+		}
+	}
+
+	// Check if we have old data and can just
+	if repo.oldRepo != nil {
+		if commitHashesEqual(repo.CommitHashesOrdered, repo.oldRepo.CommitHashes) {
+			repo.CommitCounts = repo.oldRepo.LangCounts
+			log(Info, repo, "Finished (Old Data)")
+			logProgess(repo, "Finished (Old Data)", 1)
+			repo.LangCounts = repo.oldRepo.LangCounts
+			repo.UniqueFileCount = repo.oldRepo.UniqueFileCount
+			return repo.oldRepo.LangCounts
+		}
+	}
+
+	ret := map[string]*LineBytePair{}
 
 	for i, commit := range commits {
 		if commit.shouldSkipCommit() {
@@ -317,20 +356,18 @@ func (repo *Repo) countByCommit() map[string]*LineBytePair {
 			var lines int
 			var bytes int
 			if config.CountTotal {
-				lines = diff.Added.lines - diff.Removed.lines
-				bytes = diff.Added.bytes - diff.Removed.bytes
+				lines = diff.Added.Lines - diff.Removed.Lines
+				bytes = diff.Added.Bytes - diff.Removed.Bytes
 			} else {
-				lines = diff.Added.lines + diff.Removed.lines
-				bytes = diff.Added.bytes + diff.Removed.bytes
+				lines = diff.Added.Lines + diff.Removed.Lines
+				bytes = diff.Added.Bytes + diff.Removed.Bytes
 			}
 
-			pair.lines += lines
-			pair.bytes += bytes
-			commitPair.lines += lines
-			commitPair.bytes += bytes
+			pair.Lines += lines
+			pair.Bytes += bytes
+			commitPair.Lines += lines
+			commitPair.Bytes += bytes
 		}
-
-		repo.CommitHashesOrdered = append(repo.CommitHashesOrdered, commit.Hash)
 	}
 
 	msg := fmt.Sprintf("Checking out branch %s", repo.LatestBranch)
@@ -341,6 +378,7 @@ func (repo *Repo) countByCommit() map[string]*LineBytePair {
 	log(Info, repo, "Finished")
 	logProgess(repo, "Finished", 1)
 
+	repo.LangCounts = ret
 	return ret
 }
 

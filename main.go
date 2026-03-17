@@ -14,14 +14,6 @@ func check(e error) {
 	}
 }
 
-type ConcData struct {
-	mu    sync.Mutex
-	v     map[string]*LineBytePair
-	l     map[string][]LineBytePairForLang
-	f     int
-	repos []Repo
-}
-
 const TMPFILE = "/tmp/metrics_lock"
 
 func printHelp() {
@@ -119,6 +111,10 @@ func main() {
 
 	cursorY = logGetCursorPos()
 
+	state := State{}
+	err = state.read()
+	hasState := err == nil
+
 	cumulative := ConcData{
 		mu:    sync.Mutex{},
 		v:     map[string]*LineBytePair{},
@@ -166,7 +162,13 @@ func main() {
 				}
 
 				lastRepo = &repo
-				initRepo(&repo)
+				var oldRepo *SerializedRepo = nil
+
+				if hasState {
+					tmp := state.Repos[repo.Identifier]
+					oldRepo = &tmp
+				}
+				initRepo(&repo, oldRepo)
 
 				if len(repo.LatestCommit.Hash) == 0 {
 					continue
@@ -185,8 +187,8 @@ func main() {
 						cumulative.v[k] = &LineBytePair{}
 					}
 
-					cumulative.v[k].lines += v.lines
-					cumulative.v[k].bytes += v.bytes
+					cumulative.v[k].Lines += v.Lines
+					cumulative.v[k].Bytes += v.Bytes
 
 					if cumulative.l[k] == nil {
 						cumulative.l[k] = []LineBytePairForLang{}
@@ -194,13 +196,13 @@ func main() {
 
 					cumulative.l[k] = append(cumulative.l[k], LineBytePairForLang{
 						lang:  repo.Identifier,
-						lines: v.lines,
-						bytes: v.bytes,
+						lines: v.Lines,
+						bytes: v.Bytes,
 					})
 
 				}
 
-				cumulative.f += len(repo.UniqueFiles)
+				cumulative.f += repo.UniqueFileCount
 				cumulative.repos = append(cumulative.repos, repo)
 				cumulative.mu.Unlock()
 			}
@@ -237,8 +239,8 @@ func main() {
 		bytes := 0
 
 		if totals != nil {
-			lines = totals.lines
-			bytes = totals.bytes
+			lines = totals.Lines
+			bytes = totals.Bytes
 		}
 
 		var msg strings.Builder
@@ -257,7 +259,12 @@ func main() {
 
 		for _, hash := range repo.CommitHashesOrdered {
 			v := repo.CommitCounts[hash]
-			fmt.Fprintf(&msg, "Commit: %s, Lines: %d, Bytes: %d\n", hash, v.lines, v.bytes)
+
+			if v != nil {
+				fmt.Fprintf(&msg, "Commit: %s, Lines: %d, Bytes: %d\n", hash, v.Lines, v.Bytes)
+			} else {
+				fmt.Fprintf(&msg, "Commit: %s, Lines: nil, Bytes: nil\n", hash)
+			}
 		}
 
 		log(Info, nil, msg.String())
@@ -267,5 +274,10 @@ func main() {
 
 	if err != nil {
 		fmt.Printf("Failed to remove lockfile: %s\n", err)
+	}
+
+	err = cumulative.writeState()
+	if err != nil {
+		logEcho(Critical, nil, fmt.Sprintf("Error writing data: %s\n", err.Error()), true)
 	}
 }
