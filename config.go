@@ -142,6 +142,10 @@ func initConfig(path string) {
 
 	copyToReposToCheck := func(repoResponses []RepoResponse) {
 		for _, repo := range repoResponses {
+			if slices.Contains(reposToCheck, repo.Full_Name) {
+				continue
+			}
+
 			if config.ExcludeForks && repo.Fork {
 				logEcho(Info, nil, fmt.Sprintf("Skipping forked repository %s", repo.Full_Name), true)
 				continue
@@ -152,9 +156,7 @@ func initConfig(path string) {
 				continue
 			}
 
-			if !slices.Contains(reposToCheck, repo.Full_Name) {
-				reposToCheck = append(reposToCheck, repo.Full_Name)
-			}
+			reposToCheck = append(reposToCheck, repo.Full_Name)
 		}
 	}
 
