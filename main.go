@@ -272,15 +272,9 @@ func main() {
 		log(Info, nil, msg.String())
 	}
 
-	err = os.Remove(TMPFILE)
-
-	if err != nil {
-		fmt.Printf("Failed to remove lockfile: %s\n", err)
-	}
-
 	err = cumulative.writeState()
 	if err != nil {
-		logEcho(Critical, nil, fmt.Sprintf("Error writing data: %s\n", err.Error()), true)
+		logEcho(Critical, nil, fmt.Sprintf("Error writing data: %s", err.Error()), true)
 	}
 
 	if len(config.PostExec) != 0 {
@@ -309,5 +303,11 @@ func main() {
 		} else {
 			logEcho(Info, nil, "Finished running PostExec", true)
 		}
+	}
+
+	err = os.Remove(TMPFILE)
+
+	if err != nil {
+		logEcho(Critical, nil, fmt.Sprintf("Failed to remove lockfile: %s", err), true)
 	}
 }
