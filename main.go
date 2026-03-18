@@ -16,8 +16,6 @@ func check(e error) {
 	}
 }
 
-const TMPFILE = "/tmp/metrics_lock"
-
 func printHelp() {
 	fmt.Printf(`
 ppeb's git language metrics generator!!!
@@ -28,6 +26,7 @@ Usage: ./ppebtrics [OPTIONS]
  -o|--output           Specify the output path of your svg
  -d|--dry-run          Dry run! List the repos to be cloned and analyzed
  -s|--silent           Don't output to stdout
+ -f|--force            Ignore the lockfile, run even if it is present
 `)
 
 	os.Exit(1)
@@ -37,6 +36,7 @@ func main() {
 	var configPath string
 	var dryRun = false
 	var silent = false
+	var force = false
 
 	argsLen := len(os.Args)
 
@@ -64,6 +64,8 @@ func main() {
 			dryRun = true
 		case "-s", "--silent":
 			silent = true
+		case "-f", "--force":
+			force = true
 		default:
 			fmt.Printf("Unknown argument %s!\n", arg)
 			printHelp()
@@ -79,24 +81,6 @@ func main() {
 		outputPath = "./langs.svg"
 	}
 
-	_, err := os.Stat(TMPFILE)
-
-	// 3 cases
-	// Lock file exists and is read
-	// Lock file failed to read
-	// Lock file does not exist
-
-	if err != nil && !os.IsNotExist(err) {
-		// Failed to read lock file
-		panic(fmt.Sprintf("Failed to read lock file: %s\n", err))
-	} else if err == nil {
-		panic(fmt.Sprintf("Lock file '%s' is currently held by another process. Only remove it if you are sure no other instance is running!", TMPFILE))
-	} else if os.IsNotExist(err) {
-		// Create lock file
-		_, err := os.Create(TMPFILE)
-		check(err)
-	}
-
 	initLog(silent)
 	defer logClose()
 	initConfig(configPath)
@@ -108,6 +92,14 @@ func main() {
 		}
 
 		logResetCursor()
+		return
+	}
+
+	// Begin accessing potentially shared state, lock
+	err := lock(force)
+
+	if err != nil {
+		logEcho(Critical, nil, fmt.Sprintf("Failed to acquire lockfile: %s", err), true)
 		return
 	}
 
@@ -305,9 +297,7 @@ func main() {
 		}
 	}
 
-	err = os.Remove(TMPFILE)
-
-	if err != nil {
+	if err := unlock(); err != nil {
 		logEcho(Critical, nil, fmt.Sprintf("Failed to remove lockfile: %s", err), true)
 	}
 }

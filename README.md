@@ -17,6 +17,7 @@ intended to be run locally.
  -o|--output           Specify the output path of your svg
  -d|--dry-run          Dry run! List the repos to be cloned and analyzed
  -s|--silent           Don't output to stdout
+ -f|--force            Ignore the lockfile, run even if it is present
 ```
 
 ## Config
