@@ -38,3 +38,4 @@ ignore:
   langs:
     - "CSV"
     - "Roff Manpage"
+postexec: "scp langs.svg server:public/langs.svg"

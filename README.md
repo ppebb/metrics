@@ -86,6 +86,9 @@ ignore.generated (`boolean`): Whether to ignore files identified by go-enry as g
 
 ignore.langs (`[]string`): List of languages to exclude from results.
 
+postexec (`string`): String passed to `sh -c` to be executed after processing
+repositories. Useful to copy the generated svg to a remote server for hosting.
+
 ## Credit
 This project is loosely based upon
 [lowlighter/metrics](https://github.com/lowlighter/metrics) and

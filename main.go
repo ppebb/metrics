@@ -1,8 +1,10 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
 	"os"
+	"os/exec"
 	"runtime/debug"
 	"strings"
 	"sync"
@@ -279,5 +281,33 @@ func main() {
 	err = cumulative.writeState()
 	if err != nil {
 		logEcho(Critical, nil, fmt.Sprintf("Error writing data: %s\n", err.Error()), true)
+	}
+
+	if len(config.PostExec) != 0 {
+		logEcho(Info, nil, fmt.Sprintf("Running PostExec '%s'", config.PostExec), true)
+
+		cmd := exec.Command("sh", "-c", config.PostExec)
+
+		stdout := &bytes.Buffer{}
+		stderr := &bytes.Buffer{}
+
+		cmd.Stdout = stdout
+		cmd.Stderr = stderr
+
+		cmd.Run()
+
+		out := stdout.String()
+		err := stderr.String()
+
+		code := cmd.ProcessState.ExitCode()
+
+		log(Info, nil, fmt.Sprintf("stdout: %s\n", out))
+		log(Info, nil, fmt.Sprintf("stderr: %s\n", err))
+
+		if code != 0 {
+			logEcho(Critical, nil, fmt.Sprintf("Command '%s' failed with code %d! See logs for more info", config.PostExec, code), true)
+		} else {
+			logEcho(Info, nil, "Finished running PostExec", true)
+		}
 	}
 }

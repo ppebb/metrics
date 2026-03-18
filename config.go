@@ -61,6 +61,7 @@ type Config struct {
 		Generated      bool
 		Langs          []string
 	}
+	PostExec string
 }
 
 var outputPath string
