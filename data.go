@@ -19,6 +19,7 @@ type ConcData struct {
 
 type SerializedRepo struct {
 	CommitHashes    []string
+	CommitCounts    map[string]*LineBytePair
 	LangCounts      map[string]*LineBytePair
 	UniqueFileCount int
 }
@@ -74,6 +75,7 @@ func (d *ConcData) writeState() error {
 	for _, repo := range d.repos {
 		s.Repos[repo.Identifier] = SerializedRepo{
 			CommitHashes:    repo.CommitHashesOrdered,
+			CommitCounts:    repo.CommitCounts,
 			LangCounts:      repo.LangCounts,
 			UniqueFileCount: repo.UniqueFileCount,
 		}

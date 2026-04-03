@@ -309,6 +309,7 @@ func (repo *Repo) countByCommit() map[string]*LineBytePair {
 			logProgess(repo, "Finished (Old Data)", 1)
 			repo.LangCounts = repo.oldRepo.LangCounts
 			repo.UniqueFileCount = repo.oldRepo.UniqueFileCount
+			repo.CommitCounts = repo.oldRepo.CommitCounts
 			return repo.oldRepo.LangCounts
 		}
 	}
