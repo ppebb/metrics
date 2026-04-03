@@ -38,7 +38,7 @@ func initLog(isSilent bool) {
 	err := os.MkdirAll("./logs", os.FileMode(0755))
 	check(err)
 
-	logFd, err := os.Create(fmt.Sprintf("./logs/%s.log", dt.Format(time.RFC822)))
+	logFd, err := os.Create(fmt.Sprintf("./logs/%d-%d-%d %d:%d:%d.log", dt.Year(), dt.Month(), dt.Day(), dt.Hour(), dt.Minute(), dt.Second()))
 	check(err)
 
 	fd = fdSafe{
