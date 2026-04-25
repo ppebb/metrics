@@ -100,6 +100,7 @@ func main() {
 
 	if err != nil {
 		logEcho(Critical, nil, fmt.Sprintf("Failed to acquire lockfile: %s", err), true)
+		logResetCursor()
 		return
 	}
 
