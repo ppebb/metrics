@@ -3,7 +3,9 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
+	"os"
 	"strings"
 )
 
@@ -26,10 +28,19 @@ func githubGetAccountRepos(account string, org bool, token string) []RepoRespons
 		} else {
 			response = githubGetUserRepos(account, token, page)
 		}
+		defer response.Body.Close()
 
 		link := response.Header.Get("link")
 		if len(link) == 0 || !strings.Contains(link, "rel=\"next\"") {
 			shouldContinue = false
+		}
+
+		if response.StatusCode != 200 {
+			body, err := io.ReadAll(response.Body)
+			check(err)
+			bodyString := string(body)
+			fmt.Fprintf(os.Stderr, "Github api request failed: %s", bodyString)
+			os.Exit(1)
 		}
 
 		responses := []RepoResponse{}
