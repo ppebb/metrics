@@ -41,6 +41,15 @@ func initLog(isSilent bool) {
 	logFd, err := os.Create(fmt.Sprintf("./logs/%d-%02d-%02d %02d:%02d:%02d.log", dt.Year(), dt.Month(), dt.Day(), dt.Hour(), dt.Minute(), dt.Second()))
 	check(err)
 
+	entries, err := os.ReadDir("./logs")
+	check(err)
+
+	for len(entries) > 3 {
+		err := os.Remove(fmt.Sprintf("./logs/%s", entries[0].Name()))
+		check(err)
+		entries = entries[1:]
+	}
+
 	fd = fdSafe{
 		mu: sync.Mutex{},
 		fd: logFd,
