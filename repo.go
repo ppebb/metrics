@@ -386,22 +386,25 @@ func (repo *Repo) countByCommit() map[string]*LineBytePair {
 func (repo *Repo) getMatchingCommits() []Commit {
 	ret := []Commit{}
 
+	args := []string{"log", "--no-merges", "--pretty=format:%h %ct"}
 	for _, author := range config.Authors {
-		commitsText, _, err := runGitSync(repo.Path, "log", "--author="+author, "--no-merges", "--pretty=format:%h %ct")
-		check(err)
-		commitsLines := strings.Split(commitsText, "\n")
+		args = append(args, fmt.Sprintf("--author=%s", author))
+	}
 
-		for _, line := range commitsLines {
-			split := strings.Fields(line)
+	commitsText, _, err := runGitSync(repo.Path, args...)
+	check(err)
+	commitsLines := strings.Split(commitsText, "\n")
 
-			if len(split) != 2 {
-				continue
-			}
+	for _, line := range commitsLines {
+		split := strings.Fields(line)
 
-			timestamp, err := strconv.ParseUint(split[1], 10, 64)
-			check(err)
-			ret = commitsInsertSortedUnique(ret, makeCommit(repo, split[0], timestamp))
+		if len(split) != 2 {
+			continue
 		}
+
+		timestamp, err := strconv.ParseUint(split[1], 10, 64)
+		check(err)
+		ret = commitsInsertSortedUnique(ret, makeCommit(repo, split[0], timestamp))
 	}
 
 	return ret
