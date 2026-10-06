@@ -134,6 +134,15 @@ func indent(s string, by int) string {
 	return builder.String()
 }
 
+// TODO: Remove this one enry updates to a newer version of linguist
+func getColor(language string) string {
+	if language == "C#" {
+		return "#7355dd"
+	}
+
+	return enry.GetColor(language)
+}
+
 func createSVG(langs map[string]*LineBytePair, totalFiles int) {
 	svgTmplFuncMap = template.FuncMap{
 		"indent": indent,
@@ -432,7 +441,7 @@ func createCompact(totals Totals, langsSorted []LineBytePairForLang, outputFile 
 			FillDelay:  750 + i*150,
 			RectX:      rectX,
 			RectW:      rectW,
-			Color:      enry.GetColor(lt.lang),
+			Color:      getColor(lt.lang),
 		}
 
 		rectX += rectW
@@ -505,7 +514,7 @@ func createVertical(totals Totals, langsSorted []LineBytePairForLang, outputFile
 			Delay:     450 + i*150,
 			FillDelay: 750 + i*150,
 			RectW:     max(int(perc*100), 2),
-			Color:     enry.GetColor(lt.lang),
+			Color:     getColor(lt.lang),
 		}
 	}
 
